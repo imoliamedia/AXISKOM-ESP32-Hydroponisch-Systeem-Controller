@@ -266,7 +266,7 @@ const char* WEBUI_HTML = R"rawliteral(
 
   <div class="version-info">
     ESP32 Hydroponisch Systeem Controller v1.0.0<br>
-    <a href="https://github.com/YOUR-USERNAME/ESP32-Hydroponic-Controller" target="_blank">Axiskom GitHub Repository</a>
+    <a href="https://github.com/imoliamedia/AXISKOM-ESP32-Hydroponisch-Systeem-Controller" target="_blank">Axiskom GitHub Repository</a>
   </div>
 
   <script>

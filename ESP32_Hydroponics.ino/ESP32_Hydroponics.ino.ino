@@ -3,7 +3,7 @@
 // Hoofdbestand
 // 
 // Een open-source hydroponisch systeem controller voor ESP32
-// GitHub: https://github.com/[uw-gebruikersnaam]/ESP32-Hydroponic-Controller
+// GitHub: https://github.com/imoliamedia/AXISKOM-ESP32-Hydroponisch-Systeem-Controller
 //=========================================================================
 
 #include "Settings.h"
