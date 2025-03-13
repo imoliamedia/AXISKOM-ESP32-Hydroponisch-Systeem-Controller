@@ -4,7 +4,7 @@ Een open-source controller voor hydroponische systemen gebaseerd op de ESP32 mic
 
 ## Over AXISKOM
 
-AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, prepping, outdoor skills en zelfvoorzienend leven. Dit project ondersteunt de missie van AXISKOM: "Zelfredzaamheid begint bij kennis" door praktische tools te bieden voor zelfvoorzienend tuinieren en duurzame voedselproductie. Bezoek [AXISKOM.nl](https://axiskom.nl)
+AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, prepping, outdoor skills en zelfvoorzienend leven. Dit project ondersteunt de missie van AXISKOM: "Zelfredzaamheid begint bij kennis" door praktische tools te bieden voor zelfvoorzienend tuinieren en duurzame voedselproductie.  Bezoek [AXISKOM.nl](https://axiskom.nl) voor meer informatie.
 
 ## Functies
 
@@ -107,9 +107,52 @@ const int NACHT_START_UUR = 22; // Nacht begint om 22:00
 const int NACHT_EIND_UUR = 6;   // Nacht eindigt om 06:00
 ```
 
+### Pompcycli Instellingen
+
+De standaard instellingen voor de pompcycli kunnen worden aangepast in `Settings.h`. Deze bepalen hoe lang de pomp aan en uit is, afhankelijk van de temperatuur:
+
+```cpp
+// Standaard instellingen voor pomp cycli (in seconden)
+struct TempSettings {
+  uint16_t magic = EEPROM_MAGIC;   // Magic number om te controleren of EEPROM geldig is
+  int temp_laag_aan = 120;     // 2 minuten AAN als temp < 18°C
+  int temp_laag_uit = 1080;    // 18 minuten UIT als temp < 18°C
+  
+  int temp_midden_aan = 120;   // 2 minuten AAN als temp 18-25°C
+  int temp_midden_uit = 780;   // 13 minuten UIT als temp 18-25°C
+  
+  int temp_hoog_aan = 120;     // 2 minuten AAN als temp > 25°C
+  int temp_hoog_uit = 480;     // 8 minuten UIT als temp > 25°C
+  
+  int nacht_aan = 60;          // 1 minuut AAN 's nachts
+  int nacht_uit = 1740;        // 29 minuten UIT 's nachts
+  
+  float temp_laag_grens = 18.0;  // Grens tussen laag en midden °C
+  float temp_hoog_grens = 25.0;  // Grens tussen midden en hoog °C
+  
+  char systeemnaam[32] = "Hydro Systeem 1";  // Systeemnaam als char array
+};
+```
+
+Deze waarden kunnen ook via de webinterface worden aangepast onder het tabblad "Instellingen", maar het aanpassen van de standaardwaarden in de code is handig als je meerdere systemen met dezelfde basisinstellingen wilt inrichten.
+
 ## Gebruiksaanwijzing
 
+### Enkelvoudig Systeem
+
 Na het uploaden en verbinden met WiFi kun je de webinterface openen op het IP-adres van de ESP32.
+
+### Meerdere Systemen
+
+Als je meerdere hydroponische systemen gebruikt, bieden we een Master Dashboard HTML-bestand (ESP32Hydro.html) waarmee je al je systemen op één pagina kunt beheren. Je kunt dit dashboard vinden in de GitHub repository:
+
+1. Download het `ESP32Hydro.html` bestand van de repository
+2. Open het bestand in een webbrowser
+3. Klik op "+ Nieuw Systeem" om je systemen toe te voegen
+4. Vul de systeemnaam en het IP-adres in voor elk van je systemen
+5. Alle systemen worden op het dashboard weergegeven en kunnen van daaruit worden beheerd
+
+Het dashboard slaat je systemen lokaal op, zodat je ze niet opnieuw hoeft toe te voegen wanneer je de pagina later opnieuw bezoekt.
 
 ### Bediening
 
