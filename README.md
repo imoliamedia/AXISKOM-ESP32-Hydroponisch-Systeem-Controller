@@ -1,6 +1,10 @@
 # ESP32 Hydroponisch Systeem Controller
 
-Een open-source controller voor hydroponische systemen gebaseerd op de ESP32 microcontroller. Deze controller regelt de pompwerking op basis van temperatuur en tijd.
+Een open-source controller voor hydroponische systemen gebaseerd op de ESP32 microcontroller, ontwikkeld als onderdeel van het AXISKOM kennisplatform voor zelfredzaamheid en zelfvoorzienend leven. Deze controller regelt de pompwerking op basis van temperatuur en tijd.
+
+## Over AXISKOM
+
+AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, prepping, outdoor skills en zelfvoorzienend leven. Dit project ondersteunt de missie van AXISKOM: "Zelfredzaamheid begint bij kennis" door praktische tools te bieden voor zelfvoorzienend tuinieren en duurzame voedselproductie. Bezoek [AXISKOM.nl](https://axiskom.nl)
 
 ## Functies
 
@@ -122,6 +126,18 @@ Op het tabblad "Instellingen" kun je:
 - Aan/uit tijden voor elke temperatuurreeks configureren
 - Nacht cyclustijden instellen
 
+## AXISKOM Integratie
+
+Dit project past binnen de volgende categorieën van het AXISKOM platform:
+
+### Zelfvoorzienend
+- **Tuinieren**: Optimaliseer je eigen voedselproductie met hydroponische systemen
+- **Energie & Water**: Efficiënt waterbeheer voor duurzame tuinbouw
+- **Opslag & Bewaren**: Automatisering voor consistente groeiomstandigheden
+
+### Tools
+Deze controller kan worden gezien als een praktisch hulpmiddel binnen de AXISKOM tools-categorie, vergelijkbaar met de andere calculators en planners op het platform.
+
 ## Zelf uitbreiden
 
 De code is modulair opgezet om eenvoudig uitbreidingen mogelijk te maken. Nieuwe functies kunnen worden toegevoegd zonder de kernfunctionaliteit te verstoren.
@@ -140,6 +156,11 @@ Mogelijke uitbreidingen:
 - Voedingsdoseersysteem
 - Waterniveau monitoring
 - Datalogging naar SD-kaart of externe service
+- Integratie met andere AXISKOM tools zoals de Moestuin Planner
+
+## Community
+
+We moedigen gebruikers aan om ervaringen en verbeteringen te delen met de AXISKOM community. Bezoek [AXISKOM.nl](https://axiskom.nl) voor meer informatie over zelfredzaamheid en zelfvoorzienend leven.
 
 ## Bijdragen
 
@@ -158,3 +179,4 @@ Dit project is beschikbaar onder de MIT-licentie. Zie het `LICENSE` bestand voor
 
 - Dank aan de Arduino en ESP32 community voor de geweldige bibliotheken
 - Dank aan alle bijdragers aan dit project
+- Met dank aan het AXISKOM platform voor inspiratie en ondersteuning
