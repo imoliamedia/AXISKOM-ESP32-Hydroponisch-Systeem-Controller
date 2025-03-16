@@ -6,6 +6,7 @@
 #include "Settings.h"
 
 // WiFi instellingen
+// VERANDER DEZE WAARDEN NAAR JE EIGEN WIFI NETWERK GEGEVENS
 const char* ssid = "JouwWiFiNaam";
 const char* password = "JouwWiFiWachtwoord";
 

@@ -10,11 +10,20 @@
 #include <EEPROM.h>
 
 //=====================================================================
+// CONFIGURATIE - FUNCTIONALITEIT AAN/UIT ZETTEN
+//=====================================================================
+// Verander 'false' naar 'true' om een functie in te schakelen
+// Verander 'true' naar 'false' om een functie uit te schakelen
+
+#define ENABLE_FLOW_SENSOR true      // Waterstroomsensor
+#define ENABLE_EMAIL_NOTIFICATION true  // E-mail notificaties
+
+//=====================================================================
 // CONFIGURATIE - GEBRUIKERS KUNNEN DEZE INSTELLINGEN AANPASSEN
 //=====================================================================
 
 // WiFi instellingen
-// VERANDER DEZE WAARDEN NAAR JE EIGEN WIFI NETWERK GEGEVENS
+// VERANDER DEZE WAARDEN VAN JE EIGEN WIFI NETWERK GEGEVENS ENKEL IN Settingslmpl.cpp
 extern const char* ssid;
 extern const char* password;
 
@@ -22,6 +31,11 @@ extern const char* password;
 // VERANDER DEZE PINNEN INDIEN NODIG OM AAN TE SLUITEN OP JE HARDWARE
 #define ONE_WIRE_BUS 4    // GPIO4 voor DS18B20 temperatuursensor
 #define RELAY_PIN 5       // GPIO5 voor relais
+
+// Pindefinities voor uitbreidingsmodules
+#ifdef ENABLE_FLOW_SENSOR
+  #define FLOW_SENSOR_PIN 14          // GPIO14 voor waterstroomsensor (digital output)
+#endif
 
 // NTP server configuratie
 // JE KUNT EEN ANDERE NTP SERVER KIEZEN INDIEN GEWENST
@@ -61,6 +75,21 @@ struct TempSettings {
   float temp_hoog_grens = 25.0;  // Grens tussen midden en hoog °C
   
   char systeemnaam[32] = "Hydro Systeem 1";  // Systeemnaam als char array
+  
+  // Nieuwe velden voor flowsensor
+  #ifdef ENABLE_FLOW_SENSOR
+    float minFlowRate = 1.0;         // Minimale waterstroming in L/min
+    bool flowSensorDebug = false;    // Debug modus voor flowsensor
+    bool flowAlertEnabled = true;    // Alerts voor flowproblemen aan/uit
+  #endif
+  
+  // Nieuwe velden voor e-mailnotificaties
+  #ifdef ENABLE_EMAIL_NOTIFICATION
+    char emailUsername[64] = "jouw.email@gmail.com";  // Gmail adres
+    char emailPassword[64] = "jouw-app-wachtwoord";   // App-specifiek wachtwoord
+    char emailRecipient[64] = "ontvanger@email.com";  // Ontvanger e-mailadres
+    bool emailDebug = false;         // Debug modus voor e-mail
+  #endif
 };
 
 // Controleer of de structuur past in de gereserveerde EEPROM ruimte
@@ -96,5 +125,32 @@ void handleGetStatus();
 void handleGetSettings();
 void handlePostSettings();
 void handlePostOverride();
+
+// Functieprototypes voor flowsensor module
+#ifdef ENABLE_FLOW_SENSOR
+  void setupFlowSensor();
+  void updateFlowSensor();
+  void resetFlowSensor();
+  extern float currentFlowRate;
+  extern float totalFlowVolume;
+  extern bool flowSensorError;
+  extern bool noFlowDetected;
+  
+  // API handlers voor flowsensor
+  void handleGetConfig();
+  void handleGetFlowSettings();
+  void handlePostFlowSettings();
+  void handleResetFlow();
+#endif
+
+// Functieprototypes voor e-mail notificatie
+#if defined(ENABLE_FLOW_SENSOR) && defined(ENABLE_EMAIL_NOTIFICATION)
+  void setupEmailClient();
+  bool sendEmailAlert(const char* subject, const char* message);
+  void triggerFlowAlert();
+  bool sendTestEmail();
+  void handleTestEmail();
+  String getLastEmailError();
+#endif
 
 #endif // SETTINGS_H

@@ -8,6 +8,7 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>  // Zorg ervoor dat WiFi is geïncludeerd
 #include "WebUI.h"
+#include "EmailNotification.h"
 
 // Web server instantie
 WebServer server(80);
@@ -19,6 +20,17 @@ void setupWebServer() {
   server.on("/api/settings", HTTP_GET, handleGetSettings);
   server.on("/api/settings", HTTP_POST, handlePostSettings);
   server.on("/api/override", HTTP_POST, handlePostOverride);
+  
+  // Nieuwe API endpoints voor flowsensor
+  #ifdef ENABLE_FLOW_SENSOR
+    server.on("/api/config", HTTP_GET, handleGetConfig);
+    server.on("/api/flowsettings", HTTP_GET, handleGetFlowSettings);
+    server.on("/api/flowsettings", HTTP_POST, handlePostFlowSettings);
+    server.on("/api/resetflow", HTTP_POST, handleResetFlow);
+    #ifdef ENABLE_EMAIL_NOTIFICATION
+      server.on("/api/testemail", HTTP_POST, handleTestEmail);
+    #endif
+  #endif
   
   // Optioneel: Toevoegen van een handler voor 404 Not Found
   server.onNotFound([]() {
@@ -52,6 +64,16 @@ void handleGetStatus() {
   doc["overrideActive"] = overrideActive;
   doc["isNightMode"] = isNachtModus;
   doc["currentDateTime"] = currentDateTime;
+  
+  #ifdef ENABLE_FLOW_SENSOR
+    doc["flow_sensor_enabled"] = true;
+    doc["flowRate"] = currentFlowRate;
+    doc["totalFlowVolume"] = totalFlowVolume;
+    doc["flowSensorError"] = flowSensorError;
+    doc["noFlowDetected"] = noFlowDetected;
+  #else
+    doc["flow_sensor_enabled"] = false;
+  #endif
   
   serializeJson(doc, jsonResponse);
   
@@ -188,3 +210,135 @@ void handlePostOverride() {
   
   server.send(200, "application/json", "{\"status\":\"success\"}");
 }
+
+// NIEUWE HANDLERS VOOR FLOWSENSOR
+#ifdef ENABLE_FLOW_SENSOR
+
+// API endpoint voor het ophalen van systeemconfiguratie
+void handleGetConfig() {
+  Serial.println("handleGetConfig aangeroepen");
+  String jsonResponse;
+  DynamicJsonDocument doc(256);
+  
+  doc["flow_sensor_enabled"] = ENABLE_FLOW_SENSOR;
+  doc["email_notification_enabled"] = ENABLE_EMAIL_NOTIFICATION;
+  
+  serializeJson(doc, jsonResponse);
+  Serial.println("Sending response: " + jsonResponse);
+  server.send(200, "application/json", jsonResponse);
+}
+
+// API endpoint voor het ophalen van flowsensor instellingen
+void handleGetFlowSettings() {
+  String jsonResponse;
+  DynamicJsonDocument doc(512);
+  
+  doc["minFlowRate"] = settings.minFlowRate;
+  doc["flowSensorDebug"] = settings.flowSensorDebug;
+  doc["flowAlertEnabled"] = settings.flowAlertEnabled;
+  
+  #ifdef ENABLE_EMAIL_NOTIFICATION
+    doc["emailUsername"] = settings.emailUsername;
+    // Stuur wachtwoord niet terug voor veiligheid, stuur alleen een placeholder
+    doc["emailPassword"] = settings.emailPassword[0] != '\0' ? "********" : "";
+    doc["emailRecipient"] = settings.emailRecipient;
+    doc["emailDebug"] = settings.emailDebug;
+  #endif
+  
+  serializeJson(doc, jsonResponse);
+  server.send(200, "application/json", jsonResponse);
+}
+
+// API endpoint voor het opslaan van flowsensor instellingen
+void handlePostFlowSettings() {
+  if (!server.hasArg("plain")) {
+    server.send(400, "text/plain", "Geen data ontvangen");
+    return;
+  }
+  
+  String jsonString = server.arg("plain");
+  DynamicJsonDocument doc(512);
+  DeserializationError error = deserializeJson(doc, jsonString);
+  
+  if (error) {
+    server.send(400, "text/plain", "Ongeldige JSON: " + String(error.c_str()));
+    return;
+  }
+  
+  // Valideer instellingen
+  bool validationError = false;
+  String errorMessage = "";
+  
+  // Controleer minimale flow rate
+  if (doc.containsKey("minFlowRate") && doc["minFlowRate"].as<float>() < 0.1) {
+    validationError = true;
+    errorMessage = "Ongeldige flow rate: minimale waarde is 0.1 L/min";
+  }
+  
+  if (validationError) {
+    server.send(400, "text/plain", errorMessage);
+    return;
+  }
+  
+  // Update instellingen
+  if (doc.containsKey("minFlowRate")) settings.minFlowRate = doc["minFlowRate"].as<float>();
+  if (doc.containsKey("flowSensorDebug")) settings.flowSensorDebug = doc["flowSensorDebug"].as<bool>();
+  if (doc.containsKey("flowAlertEnabled")) settings.flowAlertEnabled = doc["flowAlertEnabled"].as<bool>();
+  
+  #ifdef ENABLE_EMAIL_NOTIFICATION
+    if (doc.containsKey("emailUsername")) {
+      const char* username = doc["emailUsername"].as<const char*>();
+      strncpy(settings.emailUsername, username, sizeof(settings.emailUsername) - 1);
+      settings.emailUsername[sizeof(settings.emailUsername) - 1] = '\0';
+    }
+    
+    // Update wachtwoord alleen als het niet de placeholder is
+    if (doc.containsKey("emailPassword") && strcmp(doc["emailPassword"].as<const char*>(), "********") != 0) {
+      const char* password = doc["emailPassword"].as<const char*>();
+      strncpy(settings.emailPassword, password, sizeof(settings.emailPassword) - 1);
+      settings.emailPassword[sizeof(settings.emailPassword) - 1] = '\0';
+    }
+    
+    if (doc.containsKey("emailRecipient")) {
+      const char* recipient = doc["emailRecipient"].as<const char*>();
+      strncpy(settings.emailRecipient, recipient, sizeof(settings.emailRecipient) - 1);
+      settings.emailRecipient[sizeof(settings.emailRecipient) - 1] = '\0';
+    }
+    
+    if (doc.containsKey("emailDebug")) settings.emailDebug = doc["emailDebug"].as<bool>();
+  #endif
+  
+  // Zorg ervoor dat de magic number behouden blijft
+  settings.magic = EEPROM_MAGIC;
+  
+  // Sla instellingen op in EEPROM
+  saveSettings();
+  
+  Serial.println("Nieuwe flowsensor instellingen opgeslagen");
+  server.send(200, "application/json", "{\"status\":\"success\"}");
+}
+
+// API endpoint voor het resetten van de flow teller
+void handleResetFlow() {
+  resetFlowSensor();
+  Serial.println("Flowsensor teller gereset");
+  server.send(200, "application/json", "{\"status\":\"success\"}");
+}
+
+#ifdef ENABLE_EMAIL_NOTIFICATION
+// API endpoint voor het versturen van een test e-mail
+void handleTestEmail() {
+  bool success = sendTestEmail();
+  
+  if (success) {
+    server.send(200, "application/json", "{\"status\":\"success\",\"message\":\"Test e-mail succesvol verzonden\"}");
+  } else {
+    String errorJson = "{\"status\":\"error\",\"message\":\"Kon geen test e-mail verzenden: ";
+    errorJson += getLastEmailError();
+    errorJson += "\"}";
+    server.send(500, "application/json", errorJson);
+  }
+}
+#endif // ENABLE_EMAIL_NOTIFICATION
+
+#endif // ENABLE_FLOW_SENSOR

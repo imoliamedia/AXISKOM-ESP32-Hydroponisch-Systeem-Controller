@@ -1,10 +1,10 @@
 # ESP32 Hydroponisch Systeem Controller
 
-Een open-source controller voor hydroponische systemen gebaseerd op de ESP32 microcontroller, ontwikkeld als onderdeel van het AXISKOM kennisplatform voor zelfredzaamheid en zelfvoorzienend leven. Deze controller regelt de pompwerking op basis van temperatuur en tijd.
+Een open-source controller voor hydroponische systemen gebaseerd op de ESP32 microcontroller, ontwikkeld als onderdeel van het AXISKOM kennisplatform voor zelfredzaamheid en zelfvoorzienend leven. Deze controller regelt de pompwerking op basis van temperatuur en tijd, en kan optioneel ook de waterstroming monitoren.
 
 ## Over AXISKOM
 
-AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, prepping, outdoor skills en zelfvoorzienend leven. Dit project ondersteunt de missie van AXISKOM: "Zelfredzaamheid begint bij kennis" door praktische tools te bieden voor zelfvoorzienend tuinieren en duurzame voedselproductie.  Bezoek [AXISKOM.nl](https://axiskom.nl) voor meer informatie.
+AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, prepping, outdoor skills en zelfvoorzienend leven. Dit project ondersteunt de missie van AXISKOM: "Zelfredzaamheid begint bij kennis" door praktische tools te bieden voor zelfvoorzienend tuinieren en duurzame voedselproductie. Bezoek [AXISKOM.nl](https://axiskom.nl) voor meer informatie.
 
 ## Functies
 
@@ -16,6 +16,8 @@ AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, preppi
 - Handmatige override voor de pomp
 - Persistente instellingen (blijven bewaard bij stroomuitval)
 - Modulaire codestructuur voor eenvoudige uitbreidingen
+- **NIEUW:** Waterstroming monitoring met de YF-S201 flowsensor (optioneel)
+- **NIEUW:** E-mail waarschuwingen bij detectie van problemen (optioneel)
 
 ## Hardware Vereisten
 
@@ -24,17 +26,21 @@ AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, preppi
 - Relaismodule (voor pompbesturing)
 - DC waterpomp (of een ander apparaat dat je wilt aansturen)
 - Voeding voor de ESP32 en pomp
+- **NIEUW:** YF-S201 waterstroomsensor (optioneel)
 - Optioneel: behuizing, aansluitklemmen, etc.
 
 ## Aansluitschema
 
 ```
-ESP32 GPIO4 ──── DS18B20 Data (met 4.7kΩ pull-up weerstand naar 3.3V)
-ESP32 GPIO5 ──── Relais ingang
-ESP32 3.3V  ──── DS18B20 VCC
-ESP32 GND   ──── DS18B20 GND
-ESP32 GND   ──── Relais GND
-ESP32 5V    ──── Relais VCC
+ESP32 GPIO4  ──── DS18B20 Data (met 4.7kΩ pull-up weerstand naar 3.3V)
+ESP32 GPIO5  ──── Relais ingang
+ESP32 GPIO14 ──── YF-S201 Flowsensor signaal (gele draad) (optioneel)
+ESP32 3.3V   ──── DS18B20 VCC
+ESP32 GND    ──── DS18B20 GND
+ESP32 GND    ──── Relais GND
+ESP32 5V     ──── Relais VCC
+ESP32 5V     ──── YF-S201 VCC (rode draad) (optioneel)
+ESP32 GND    ──── YF-S201 GND (zwarte draad) (optioneel)
 ```
 
 ## Project Structuur
@@ -48,6 +54,10 @@ Het project is modulair opgezet met de volgende bestanden:
 - **SensorControl.cpp** - Temperatuursensor en pompbesturingsfuncties
 - **WebServer.cpp** - Webserver en API-endpoints
 - **WebUI.h** - HTML, CSS en JavaScript voor de webinterface
+- **FlowSensor.h** - Header voor de flowsensor module (optioneel)
+- **FlowSensor.cpp** - Implementatie van de flowsensorfuncties (optioneel)
+- **EmailNotification.h** - Header voor e-mailnotificaties (optioneel)
+- **EmailNotification.cpp** - Implementatie van e-mailnotificaties (optioneel)
 
 ## Installatie
 
@@ -57,13 +67,67 @@ Het project is modulair opgezet met de volgende bestanden:
    - ArduinoJson
    - OneWire
    - DallasTemperature
+   - ESP Mail Client (alleen nodig voor e-mail notificaties)
 4. Clone of download deze repository
 5. Open het `ESP32_Hydroponics.ino` bestand in de Arduino IDE
 6. Configureer de WiFi instellingen in `SettingsImpl.cpp`
 7. Controleer de pin instellingen in `Settings.h` en pas aan indien nodig
-8. Upload de code naar je ESP32
-9. Open de seriële monitor om het IP-adres te vinden
-10. Navigeer naar dat IP-adres in een webbrowser om de interface te openen
+8. Activeer optionele functies in `Settings.h` indien gewenst (zie 'Optionele Functionaliteit')
+9. Upload de code naar je ESP32
+10. Open de seriële monitor om het IP-adres te vinden
+11. Navigeer naar dat IP-adres in een webbrowser om de interface te openen
+
+# Benodigde Bibliotheken
+
+## Basis Bibliotheken (altijd vereist)
+- **WiFi.h** - Ingebouwd in ESP32 core, geen aparte installatie nodig
+- **EEPROM.h** - Ingebouwd in ESP32 core, geen aparte installatie nodig
+- **WebServer.h** - Ingebouwd in ESP32 core, geen aparte installatie nodig
+- **ArduinoJson** - Installeren via Arduino Library Manager
+  - Versie: minimaal 6.x
+  - Gebruikt voor: JSON-verwerking in API-responses en instellingen
+- **OneWire** - Installeren via Arduino Library Manager
+  - Versie: minimaal 2.3.5
+  - Gebruikt voor: Communicatie met de DS18B20 temperatuursensor
+- **DallasTemperature** - Installeren via Arduino Library Manager
+  - Versie: minimaal 3.8.0
+  - Gebruikt voor: DS18B20 temperatuursensor besturing
+- **time.h** - Ingebouwd in ESP32 core, geen aparte installatie nodig
+
+## Aanvullende Bibliotheken (optioneel, afhankelijk van geactiveerde functies)
+
+### Voor E-mail Notificaties
+- **ESP_Mail_Client** - Installeren via Arduino Library Manager
+  - Versie: minimaal 2.x
+  - Gebruikt voor: Het verzenden van e-mails via SMTP (Gmail)
+  - Alleen nodig als `ENABLE_EMAIL_NOTIFICATION` is ingeschakeld
+
+## Installatie van Bibliotheken
+
+### Via Arduino Library Manager
+1. Open Arduino IDE
+2. Ga naar Sketch > Include Library > Manage Libraries...
+3. Zoek naar de benodigde bibliotheek
+4. Klik op "Install" voor de juiste versie
+
+### Handmatige installatie (alternatief)
+1. Download de ZIP van de GitHub repository van de bibliotheek
+2. In Arduino IDE: Sketch > Include Library > Add .ZIP Library...
+3. Selecteer het gedownloade ZIP-bestand
+
+## Bibliotheken Compatibiliteit
+
+| Bibliotheek | Geteste Versie | ESP32 Core Compatibiliteit |
+|-------------|----------------|----------------------------|
+| ArduinoJson | 6.19.4         | 1.0.6 en hoger            |
+| OneWire     | 2.3.5          | Alle versies               |
+| DallasTemperature | 3.9.0    | Alle versies               |
+| ESP_Mail_Client | 2.7.8      | 1.0.6 en hoger            |
+
+## Opmerkingen
+- De ESP32 core (esp32 by Espressif Systems) moet geïnstalleerd zijn via de Boards Manager
+- Aanbevolen versie van ESP32 core is 1.0.6 of hoger
+- Alle bibliotheken zijn getest met Arduino IDE 1.8.19 en 2.x
 
 ## Configuratie Aanpassen
 
@@ -95,6 +159,7 @@ Als je andere pinnen gebruikt voor je sensoren of relais, pas deze aan in `Setti
 // Pindefinities voor ESP32
 #define ONE_WIRE_BUS 4    // GPIO4 voor DS18B20 temperatuursensor
 #define RELAY_PIN 5       // GPIO5 voor relais
+#define FLOW_SENSOR_PIN 14 // GPIO14 voor YF-S201 flowsensor (optioneel)
 ```
 
 ### Nachtmodus Tijden
@@ -131,16 +196,66 @@ struct TempSettings {
   float temp_hoog_grens = 25.0;  // Grens tussen midden en hoog °C
   
   char systeemnaam[32] = "Hydro Systeem 1";  // Systeemnaam als char array
+  
+  // Flowsensor instellingen (indien geactiveerd)
+  float minFlowRate = 1.0;       // Minimale waterstroming in L/min
+  bool flowAlertEnabled = true;  // E-mail alerts voor flowproblemen
+  
+  // E-mail notificatie instellingen (indien geactiveerd)
+  char emailUsername[64] = "jouw.email@gmail.com";  // Gmail adres
+  char emailPassword[64] = "jouw-app-wachtwoord";   // App-specifiek wachtwoord
+  char emailRecipient[64] = "ontvanger@email.com";  // Ontvanger e-mailadres
 };
 ```
 
-Deze waarden kunnen ook via de webinterface worden aangepast onder het tabblad "Instellingen", maar het aanpassen van de standaardwaarden in de code is handig als je meerdere systemen met dezelfde basisinstellingen wilt inrichten.
+## Optionele Functionaliteit
+
+Het systeem ondersteunt de volgende optionele functies die kunnen worden in- of uitgeschakeld:
+
+- Waterstroming monitoring met de YF-S201 flowsensor
+- E-mail notificaties bij problemen (zoals geen waterstroming wanneer de pomp actief is)
+
+### Functionaliteit activeren
+
+Om een functie te activeren, volg deze stappen:
+
+1. Open het bestand `Settings.h` in de Arduino IDE
+2. Zoek naar de CONFIGURATIE sectie bovenaan het bestand
+3. Verander `false` naar `true` voor de functies die je wilt activeren
+4. Upload de code opnieuw naar je ESP32
+
+Bijvoorbeeld, om de flowsensor te activeren, verander:
+```cpp
+#define ENABLE_FLOW_SENSOR false      // Waterstroomsensor
+```
+naar:
+```cpp
+#define ENABLE_FLOW_SENSOR true       // Waterstroomsensor
+```
+
+### E-mail Notificaties Configureren
+
+Als je e-mailnotificaties wilt gebruiken:
+
+1. Activeer zowel de flowsensor als e-mailnotificaties in `Settings.h`
+2. Voor Gmail-gebruikers: maak een app-specifiek wachtwoord aan in je Google Account instellingen
+3. Configureer je e-mailgegevens via de webinterface onder het "Flowsensor" tabblad
+4. Klik op "Test E-mail Versturen" om je instellingen te testen
 
 ## Gebruiksaanwijzing
 
 ### Enkelvoudig Systeem
 
 Na het uploaden en verbinden met WiFi kun je de webinterface openen op het IP-adres van de ESP32.
+
+### Flowsensor
+
+Als je de flowsensor hebt geactiveerd:
+
+1. De gemeten waterstroming wordt weergegeven op de statuskaart bovenaan de webinterface
+2. In het tabblad "Flowsensor" kun je de minimale flowrate en e-mail instellingen configureren
+3. Als de pomp actief is maar er wordt geen waterstroming gedetecteerd, verschijnt er een waarschuwing
+4. Indien geconfigureerd, wordt er een e-mail verzonden bij detectie van problemen
 
 ### Meerdere Systemen
 
@@ -200,6 +315,20 @@ Mogelijke uitbreidingen:
 - Waterniveau monitoring
 - Datalogging naar SD-kaart of externe service
 - Integratie met andere AXISKOM tools zoals de Moestuin Planner
+
+## Problemen oplossen
+
+### Flowsensor detecteert geen water
+- Controleer of de sensor correct is aangesloten (rood=5V, zwart=GND, geel=GPIO14)
+- Controleer of de waterstroming voldoende is (>1 L/min)
+- Controleer of de sensor in de juiste richting is gemonteerd (pijl in de stroomrichting)
+- Probeer de drempelwaarde te verlagen in de Flowsensor instellingen
+
+### Geen e-mail notificaties
+- Controleer je e-mail instellingen in de webinterface
+- Voor Gmail: zorg ervoor dat je een app-specifiek wachtwoord gebruikt
+- Controleer je internetverbinding
+- Activeer debug modus voor meer informatie in de seriële monitor
 
 ## Community
 

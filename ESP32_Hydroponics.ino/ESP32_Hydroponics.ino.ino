@@ -17,6 +17,15 @@
 #include <EEPROM.h>
 #include <time.h>
 
+// Optionele modulen op basis van configuratie
+#ifdef ENABLE_FLOW_SENSOR
+  #include "FlowSensor.h"
+#endif
+
+#if defined(ENABLE_FLOW_SENSOR) && defined(ENABLE_EMAIL_NOTIFICATION)
+  #include "EmailNotification.h"
+#endif
+
 // Globale variabelen die in meerdere modules worden gebruikt
 TempSettings settings;
 float currentTemp = 0.0;
@@ -52,6 +61,16 @@ void setup() {
   // Wacht op synchronisatie en update tijd
   updateCurrentTime();
   
+  // Flow sensor initialiseren indien ingeschakeld
+  #ifdef ENABLE_FLOW_SENSOR
+    setupFlowSensor();
+  #endif
+  
+  // E-mail client initialiseren indien ingeschakeld
+  #if defined(ENABLE_FLOW_SENSOR) && defined(ENABLE_EMAIL_NOTIFICATION)
+    setupEmailClient();
+  #endif
+  
   // Web server routes instellen
   setupWebServer();
   
@@ -85,4 +104,13 @@ void loop() {
   if (!overrideActive) {
     updatePumpCycle();
   }
+  
+  // Update flow sensor indien ingeschakeld
+  #ifdef ENABLE_FLOW_SENSOR
+    static unsigned long lastFlowUpdate = 0;
+    if (millis() - lastFlowUpdate > 1000) {  // Update elke seconde
+      updateFlowSensor();
+      lastFlowUpdate = millis();
+    }
+  #endif
 }
