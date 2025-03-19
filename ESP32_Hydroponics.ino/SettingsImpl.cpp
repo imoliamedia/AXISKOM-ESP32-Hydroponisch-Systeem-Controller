@@ -7,8 +7,15 @@
 
 // WiFi instellingen
 // VERANDER DEZE WAARDEN NAAR JE EIGEN WIFI NETWERK GEGEVENS
-const char* ssid = "JouwWiFiNaam";
-const char* password = "JouwWiFiWachtwoord";
+const char* ssid = "Jouw_WiFi_Naam";
+const char* password = "Jouw_WiFi_Wachtwoord";
+
+// Statische IP configuratie
+bool useStaticIP = true;                    // Zet op false om DHCP te gebruiken
+IPAddress staticIP(192, 168, 0, 21);        // Het vaste IP adres dat je wilt gebruiken
+IPAddress gateway(192, 168, 0, 1);          // Je router IP adres
+IPAddress subnet(255, 255, 255, 0);         // Subnet mask
+IPAddress dns(192, 168, 0, 1);              // DNS server (meestal hetzelfde als gateway)
 
 // NTP server configuratie
 const char* ntpServer = "pool.ntp.org";

@@ -26,6 +26,11 @@
 // VERANDER DEZE WAARDEN VAN JE EIGEN WIFI NETWERK GEGEVENS ENKEL IN Settingslmpl.cpp
 extern const char* ssid;
 extern const char* password;
+extern bool useStaticIP;       // Of statisch IP gebruikt moet worden
+extern IPAddress staticIP;     // Statisch IP adres
+extern IPAddress gateway;      // Gateway IP
+extern IPAddress subnet;       // Subnet mask
+extern IPAddress dns;          // DNS server
 
 // Pindefinities voor ESP32
 // VERANDER DEZE PINNEN INDIEN NODIG OM AAN TE SLUITEN OP JE HARDWARE

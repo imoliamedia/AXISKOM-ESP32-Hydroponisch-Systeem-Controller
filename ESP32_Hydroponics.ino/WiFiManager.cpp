@@ -15,6 +15,16 @@
 unsigned long lastWiFiReconnectAttempt = 0;
 
 void setupWiFi() {
+  // Configureer statisch IP indien ingeschakeld
+  if (useStaticIP) {
+    if (WiFi.config(staticIP, gateway, subnet, dns)) {
+      Serial.println("Statisch IP geconfigureerd");
+    } else {
+      Serial.println("Statische IP configuratie mislukt, gebruik DHCP");
+    }
+  }
+  
+  // De rest van je bestaande setup WiFi code
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   

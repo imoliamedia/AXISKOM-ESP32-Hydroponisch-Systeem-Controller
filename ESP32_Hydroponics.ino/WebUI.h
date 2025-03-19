@@ -263,30 +263,29 @@ const char* WEBUI_HTML = R"rawliteral(
     
     <h3>Pompcycli instellingen</h3>
     <table>
-      <tr>
-        <th>Temperatuurbereik</th>
-        <th>AAN (seconden)</th>
-        <th>UIT (seconden)</th>
-      </tr>
-      <tr>
+    <tr>
+      <th>Temperatuurbereik</th>
+      <th>AAN (minuten)</th>
+      <th>UIT (minuten)</th>
+    </tr>
         <td>Laag (< <span id="laag_display">18</span>°C)</td>
-        <td><input type="number" id="temp_laag_aan" min="0"></td>
-        <td><input type="number" id="temp_laag_uit" min="0"></td>
+        <td><input type="number" id="temp_laag_aan" min="0" step="0.1"></td>
+        <td><input type="number" id="temp_laag_uit" min="0" step="0.1"></td>
       </tr>
       <tr>
         <td>Midden (<span id="midden_min_display">18</span>-<span id="midden_max_display">25</span>°C)</td>
-        <td><input type="number" id="temp_midden_aan" min="0"></td>
-        <td><input type="number" id="temp_midden_uit" min="0"></td>
+        <td><input type="number" id="temp_midden_aan" min="0" step="0.1"></td>
+        <td><input type="number" id="temp_midden_uit" min="0" step="0.1"></td>
       </tr>
       <tr>
         <td>Hoog (> <span id="hoog_display">25</span>°C)</td>
-        <td><input type="number" id="temp_hoog_aan" min="0"></td>
-        <td><input type="number" id="temp_hoog_uit" min="0"></td>
+        <td><input type="number" id="temp_hoog_aan" min="0" step="0.1"></td>
+        <td><input type="number" id="temp_hoog_uit" min="0" step="0.1"></td>
       </tr>
       <tr>
         <td>Nacht</td>
-        <td><input type="number" id="nacht_aan" min="0"></td>
-        <td><input type="number" id="nacht_uit" min="0"></td>
+        <td><input type="number" id="nacht_aan" min="0" step="0.1"></td>
+        <td><input type="number" id="nacht_uit" min="0" step="0.1"></td>
       </tr>
     </table>
     
@@ -337,7 +336,7 @@ const char* WEBUI_HTML = R"rawliteral(
   </div>
 
   <div class="version-info">
-    ESP32 Hydroponisch Systeem Controller v1.0.7<br>
+    ESP32 Hydroponisch Systeem Controller v1.1.0<br>
     <a href="https://axiskom.nl" target="_blank">Mogelijk gemaakt door Axiskom.nl</a></br>
     <a href="https://github.com/imoliamedia/AXISKOM-ESP32-Hydroponisch-Systeem-Controller" target="_blank">Axiskom GitHub Repository</a>
     
@@ -466,22 +465,23 @@ const char* WEBUI_HTML = R"rawliteral(
   }
     
     // Instellingen ophalen
+    // Update fetchSettings functie om seconden naar minuten om te zetten
     function fetchSettings() {
       fetch('/api/settings')
         .then(response => response.json())
         .then(data => {
-          // Vul de formuliervelden in
+          // Vul de formuliervelden in met omrekening naar minuten
           document.getElementById('systeemnaam').value = data.systeemnaam;
           document.getElementById('temp_laag_grens').value = data.temp_laag_grens;
           document.getElementById('temp_hoog_grens').value = data.temp_hoog_grens;
-          document.getElementById('temp_laag_aan').value = data.temp_laag_aan;
-          document.getElementById('temp_laag_uit').value = data.temp_laag_uit;
-          document.getElementById('temp_midden_aan').value = data.temp_midden_aan;
-          document.getElementById('temp_midden_uit').value = data.temp_midden_uit;
-          document.getElementById('temp_hoog_aan').value = data.temp_hoog_aan;
-          document.getElementById('temp_hoog_uit').value = data.temp_hoog_uit;
-          document.getElementById('nacht_aan').value = data.nacht_aan;
-          document.getElementById('nacht_uit').value = data.nacht_uit;
+          document.getElementById('temp_laag_aan').value = (data.temp_laag_aan / 60).toFixed(1);
+          document.getElementById('temp_laag_uit').value = (data.temp_laag_uit / 60).toFixed(1);
+          document.getElementById('temp_midden_aan').value = (data.temp_midden_aan / 60).toFixed(1);
+          document.getElementById('temp_midden_uit').value = (data.temp_midden_uit / 60).toFixed(1);
+          document.getElementById('temp_hoog_aan').value = (data.temp_hoog_aan / 60).toFixed(1);
+          document.getElementById('temp_hoog_uit').value = (data.temp_hoog_uit / 60).toFixed(1);
+          document.getElementById('nacht_aan').value = (data.nacht_aan / 60).toFixed(1);
+          document.getElementById('nacht_uit').value = (data.nacht_uit / 60).toFixed(1);
           
           // Update pagina titel en labels
           document.getElementById('pageTitle').textContent = data.systeemnaam;
@@ -516,21 +516,23 @@ const char* WEBUI_HTML = R"rawliteral(
     }
     
     // Instellingen opslaan
+    // Update saveSettings functie om minuten naar seconden om te rekenen
     function saveSettings() {
       const settings = {
         systeemnaam: document.getElementById('systeemnaam').value,
         temp_laag_grens: parseFloat(document.getElementById('temp_laag_grens').value),
         temp_hoog_grens: parseFloat(document.getElementById('temp_hoog_grens').value),
-        temp_laag_aan: parseInt(document.getElementById('temp_laag_aan').value),
-        temp_laag_uit: parseInt(document.getElementById('temp_laag_uit').value),
-        temp_midden_aan: parseInt(document.getElementById('temp_midden_aan').value),
-        temp_midden_uit: parseInt(document.getElementById('temp_midden_uit').value),
-        temp_hoog_aan: parseInt(document.getElementById('temp_hoog_aan').value),
-        temp_hoog_uit: parseInt(document.getElementById('temp_hoog_uit').value),
-        nacht_aan: parseInt(document.getElementById('nacht_aan').value),
-        nacht_uit: parseInt(document.getElementById('nacht_uit').value)
+        temp_laag_aan: Math.round(parseFloat(document.getElementById('temp_laag_aan').value) * 60),
+        temp_laag_uit: Math.round(parseFloat(document.getElementById('temp_laag_uit').value) * 60),
+        temp_midden_aan: Math.round(parseFloat(document.getElementById('temp_midden_aan').value) * 60),
+        temp_midden_uit: Math.round(parseFloat(document.getElementById('temp_midden_uit').value) * 60),
+        temp_hoog_aan: Math.round(parseFloat(document.getElementById('temp_hoog_aan').value) * 60),
+        temp_hoog_uit: Math.round(parseFloat(document.getElementById('temp_hoog_uit').value) * 60),
+        nacht_aan: Math.round(parseFloat(document.getElementById('nacht_aan').value) * 60),
+        nacht_uit: Math.round(parseFloat(document.getElementById('nacht_uit').value) * 60)
       };
       
+      // Verder dezelfde code voor het versturen van de instellingen
       fetch('/api/settings', {
         method: 'POST',
         headers: {
@@ -538,6 +540,8 @@ const char* WEBUI_HTML = R"rawliteral(
         },
         body: JSON.stringify(settings)
       })
+      // De rest van de functie blijft hetzelfde
+    
       .then(response => {
         if (!response.ok) {
           return response.text().then(text => { throw new Error(text) });

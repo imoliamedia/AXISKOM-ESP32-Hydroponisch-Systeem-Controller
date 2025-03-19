@@ -141,6 +141,22 @@ const char* ssid = "JouwWiFiNaam";
 const char* password = "JouwWiFiWachtwoord";
 ```
 
+### Statische IP-Configuratie
+Om het beheren van meerdere systemen te vereenvoudigen, kan nu een vast IP-adres worden geconfigureerd:
+
+1. Open het bestand `SettingsImpl.cpp`
+2. Zoek de statische IP-configuratie sectie
+3. Stel `useStaticIP` in op `true` om een vast IP-adres te gebruiken
+4. Configureer het gewenste IP-adres, gateway, subnet en DNS:
+
+```cpp
+// Statische IP configuratie
+bool useStaticIP = true;                    // Zet op true voor vast IP, false voor DHCP
+IPAddress staticIP(192, 168, 0, 21);        // Het gewenste vaste IP-adres
+IPAddress gateway(192, 168, 0, 1);          // Je router/gateway IP
+IPAddress subnet(255, 255, 255, 0);         // Subnet mask
+IPAddress dns(192, 168, 0, 1);              // DNS server
+
 ### Tijdzone en NTP Server
 
 Je kunt de tijdzone en NTP server configureren in `SettingsImpl.cpp`:
@@ -174,7 +190,14 @@ const int NACHT_EIND_UUR = 6;   // Nacht eindigt om 06:00
 
 ### Pompcycli Instellingen
 
-De standaard instellingen voor de pompcycli kunnen worden aangepast in `Settings.h`. Deze bepalen hoe lang de pomp aan en uit is, afhankelijk van de temperatuur:
+De standaard instellingen voor de pompcycli kunnen worden aangepast in `Settings.h` of via gebruikersinterface. Deze bepalen hoe lang de pomp aan en uit is, afhankelijk van de temperatuur:
+
+### Weergave van Pompcycli in Minuten
+De gebruikersinterface is verbeterd door de pompcycli-tijden in minuten weer te geven in plaats van seconden. Dit maakt het systeem intuïtiever in gebruik:
+
+- In de webinterface worden alle tijden nu weergegeven en ingevoerd in minuten
+- Decimale waarden worden ondersteund (bijv. 0.5 minuten voor 30 seconden)
+- De conversie gebeurt automatisch in de achtergrond; het systeem werkt intern nog steeds met seconden
 
 ```cpp
 // Standaard instellingen voor pomp cycli (in seconden)
