@@ -156,6 +156,7 @@ IPAddress staticIP(192, 168, 0, 21);        // Het gewenste vaste IP-adres
 IPAddress gateway(192, 168, 0, 1);          // Je router/gateway IP
 IPAddress subnet(255, 255, 255, 0);         // Subnet mask
 IPAddress dns(192, 168, 0, 1);              // DNS server
+```
 
 ### Tijdzone en NTP Server
 
