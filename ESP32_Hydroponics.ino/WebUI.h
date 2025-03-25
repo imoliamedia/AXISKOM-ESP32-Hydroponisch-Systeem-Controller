@@ -94,6 +94,10 @@ const char* WEBUI_HTML = R"rawliteral(
       border-radius: 4px;
       width: 100%;
     }
+    table input {
+      width: 80px;
+      text-align: center;
+    }
     .settings-row {
       margin-bottom: 10px;
     }
@@ -206,6 +210,12 @@ const char* WEBUI_HTML = R"rawliteral(
     <div id="nightMode" class="night-mode" style="display: none;">
       Nachtmodus actief
     </div>
+    <div id="continuModusIndicator" class="night-mode" style="display: none; background-color: #d35400;">
+      Continue modus actief (NFT/DFT)
+    </div>
+    <div id="intervalModusIndicator" class="night-mode" style="display: none; background-color: #d35400;">
+      Interval modus actief (Hydro Toren)
+    </div>
     
     <div id="flowSensorData" style="display: none;">
       <div style="display: flex; justify-content: center; margin-top: 10px;">
@@ -260,8 +270,21 @@ const char* WEBUI_HTML = R"rawliteral(
       <div class="settings-label">Hoge temperatuurgrens:</div>
       <input type="number" id="temp_hoog_grens" min="0" max="40" step="0.5"> °C
     </div>
+
+    <h3>Systeem Type</h3>
+    <div class="settings-row">
+      <div class="settings-label">Pomp modus:</div>
+      <select id="continuModus">
+        <option value="false">Interval modus (voor Hydro Toren)</option>
+        <option value="true">Continue modus (voor NFT/DFT)</option>
+      </select>
+    </div>
+    <p style="margin-bottom: 10px; font-size: 14px; color: #666;">
+      Kies 'Continue modus' voor NFT of DFT systemen waarbij de pomp continu moet draaien.
+    </p>
     
     <h3>Pompcycli instellingen</h3>
+    <p style="margin-bottom: 10px; font-size: 14px; color: #666;">Je kunt tijden instellen tot op 30 seconden nauwkeurig (0.5 minuten).</p>
     <table>
     <tr>
       <th>Temperatuurbereik</th>
@@ -420,6 +443,13 @@ const char* WEBUI_HTML = R"rawliteral(
           isNachtModus = data.isNightMode;
           document.getElementById('nightMode').style.display = 
             isNachtModus ? 'block' : 'none';
+
+          // Update continue modus indicator
+          // Update modus indicators
+          document.getElementById('continuModusIndicator').style.display = 
+            data.continuModus && !data.overrideActive ? 'block' : 'none';
+          document.getElementById('intervalModusIndicator').style.display = 
+            !data.continuModus && !data.overrideActive ? 'block' : 'none';
           
           // Override status bijwerken
           overrideActive = data.overrideActive;
@@ -492,6 +522,9 @@ const char* WEBUI_HTML = R"rawliteral(
           document.getElementById('midden_min_display').textContent = data.temp_laag_grens;
           document.getElementById('midden_max_display').textContent = data.temp_hoog_grens;
           document.getElementById('hoog_display').textContent = data.temp_hoog_grens;
+
+          // Update continue modus selectie
+          document.getElementById('continuModus').value = data.continuModus.toString();
         })
         .catch(error => {
           console.error('Fout bij het ophalen van instellingen:', error);
@@ -529,7 +562,9 @@ const char* WEBUI_HTML = R"rawliteral(
         temp_hoog_aan: Math.round(parseFloat(document.getElementById('temp_hoog_aan').value) * 60),
         temp_hoog_uit: Math.round(parseFloat(document.getElementById('temp_hoog_uit').value) * 60),
         nacht_aan: Math.round(parseFloat(document.getElementById('nacht_aan').value) * 60),
-        nacht_uit: Math.round(parseFloat(document.getElementById('nacht_uit').value) * 60)
+        nacht_uit: Math.round(parseFloat(document.getElementById('nacht_uit').value) * 60),
+        continuModus: document.getElementById('continuModus').value === 'true'
+        
       };
       
       // Verder dezelfde code voor het versturen van de instellingen

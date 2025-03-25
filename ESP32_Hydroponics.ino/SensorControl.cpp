@@ -71,6 +71,18 @@ void readTemperature() {
 void updatePumpCycle() {
   unsigned long currentTime = millis();
   
+  // Controleer eerst of continue modus actief is
+  if (settings.continuModus) {
+    // In continue modus is de pomp altijd aan
+    if (!pumpState) {
+      pumpState = true;
+      digitalWrite(RELAY_PIN, HIGH);
+      Serial.println("Pomp AAN (continue modus)");
+    }
+    return;  // Verdere cyclus logica overslaan
+  }
+  
+  // Normale interval logica (bestaande code)
   // Bepalen van de juiste aan/uit tijden op basis van temperatuur
   int activeTimeOn;
   int activeTimeOff;

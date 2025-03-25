@@ -156,6 +156,7 @@ IPAddress staticIP(192, 168, 0, 21);        // Het gewenste vaste IP-adres
 IPAddress gateway(192, 168, 0, 1);          // Je router/gateway IP
 IPAddress subnet(255, 255, 255, 0);         // Subnet mask
 IPAddress dns(192, 168, 0, 1);              // DNS server
+```
 
 ### Tijdzone en NTP Server
 
@@ -230,6 +231,41 @@ struct TempSettings {
   char emailRecipient[64] = "ontvanger@email.com";  // Ontvanger e-mailadres
 };
 ```
+
+## Interval en Continue Modus
+
+De controller ondersteunt nu twee verschillende bedrijfsmodi voor de pomp:
+
+### Interval Modus (Hydro Toren)
+Dit is de standaard bedrijfsmodus voor hydroponische torens. De pomp werkt in cycli van aan- en uit-tijden, afhankelijk van de temperatuur. Deze modus is ideaal voor systemen waar het water moet circuleren met pauzes, zoals bij verticale tuinbouw of hydroponische torens.
+
+- Configureerbare aan/uit-tijden voor verschillende temperatuurbereiken
+- Speciale nachtmodus instellingen
+- De controller kiest automatisch de juiste cyclustijden op basis van de gemeten temperatuur
+
+### Continue Modus (NFT/DFT)
+Deze nieuwe modus is speciaal ontwikkeld voor Nutrient Film Technique (NFT) en Deep Flow Technique (DFT) systemen. In deze modus blijft de pomp constant aan om een continue waterstroom te garanderen. Dit is essentieel voor systemen waar de wortels constant in een dunne film voedingsoplossing moeten baden.
+
+- Pomp blijft 24/7 draaien zonder onderbrekingen
+- Ideaal voor NFT en DFT hydroponische systemen
+- Temperatuurgebaseerde cycli worden volledig overgeslagen
+
+### Omschakelen tussen Modi
+Je kunt eenvoudig tussen interval en continue modus schakelen via de webinterface:
+
+1. Ga naar het tabblad "Instellingen" in de webinterface
+2. Onder "Systeem Type" vind je de optie om te kiezen tussen "Interval modus" en "Continue modus"
+3. Selecteer de gewenste modus en klik op "Instellingen opslaan"
+4. De controller past de nieuwe modus onmiddellijk toe
+
+### Handmatige Override
+Ongeacht welke bedrijfsmodus actief is, kun je altijd handmatig ingrijpen:
+
+- De knoppen voor handmatige bediening ("Pomp AAN" en "Pomp UIT") blijven beschikbaar
+- Handmatige bediening overschrijft tijdelijk beide automatische modi
+- Gebruik "Terug naar automatisch" om de controller terug te laten keren naar de gekozen bedrijfsmodus
+
+Deze flexibiliteit maakt de controller geschikt voor een breed scala aan verschillende hydroponische systemen, van kleine huiskamerprojecten tot grotere productieopstellingen.
 
 ## Optionele Functionaliteit
 

@@ -64,6 +64,7 @@ void handleGetStatus() {
   doc["overrideActive"] = overrideActive;
   doc["isNightMode"] = isNachtModus;
   doc["currentDateTime"] = currentDateTime;
+  doc["continuModus"] = settings.continuModus;
   
   #ifdef ENABLE_FLOW_SENSOR
     doc["flow_sensor_enabled"] = true;
@@ -96,6 +97,7 @@ void handleGetSettings() {
   doc["temp_hoog_uit"] = settings.temp_hoog_uit;
   doc["nacht_aan"] = settings.nacht_aan;
   doc["nacht_uit"] = settings.nacht_uit;
+  doc["continuModus"] = settings.continuModus;
   
   serializeJson(doc, jsonResponse);
   
@@ -135,6 +137,10 @@ void handlePostSettings() {
     validationError = true;
     errorMessage = "Ongeldige cyclustijd: minimum AAN tijd is 1 seconde";
   }
+
+  // Continue modus
+  if (doc.containsKey("continuModus")) settings.continuModus = doc["continuModus"].as<bool>();
+  
   
   if (validationError) {
     server.send(400, "text/plain", errorMessage);

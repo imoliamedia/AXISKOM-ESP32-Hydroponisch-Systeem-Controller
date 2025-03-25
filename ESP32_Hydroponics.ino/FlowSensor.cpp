@@ -172,4 +172,26 @@ void updateFlowSensor() {
   checkFlowState();
 }
 
+#else
+
+// Dummy variabelen die in andere bestanden worden gebruikt
+float currentFlowRate = 0.0;
+float totalFlowVolume = 0.0;
+bool flowSensorError = false;
+bool noFlowDetected = false;
+unsigned long lastFlowTime = 0;
+
+// Dummy implementaties
+void setupFlowSensor() {
+  // Niets doen
+}
+
+void resetFlowSensor() {
+  // Niets doen
+}
+
+void updateFlowSensor() {
+  // Niets doen
+}
+
 #endif // ENABLE_FLOW_SENSOR

@@ -274,18 +274,16 @@ void setupEmailClient() {
 }
 
 bool sendEmailAlert(const char* subject, const char* message) {
-  Serial.println("E-mail is uitgeschakeld, kan niet verzenden: ");
-  Serial.println(subject);
-  Serial.println(message);
+ 
   return false;
 }
 
 void triggerFlowAlert() {
-  Serial.println("WAARSCHUWING: Geen waterstroming gedetecteerd (e-mail is uitgeschakeld)");
+  
 }
 
 bool sendTestEmail() {
-  Serial.println("E-mail is uitgeschakeld, kan geen test e-mail verzenden");
+  
   return false;
 }
 

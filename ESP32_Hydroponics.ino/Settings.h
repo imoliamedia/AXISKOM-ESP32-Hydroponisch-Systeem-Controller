@@ -15,8 +15,8 @@
 // Verander 'false' naar 'true' om een functie in te schakelen
 // Verander 'true' naar 'false' om een functie uit te schakelen
 
-#define ENABLE_FLOW_SENSOR true      // Waterstroomsensor
-#define ENABLE_EMAIL_NOTIFICATION true  // E-mail notificaties
+#define ENABLE_FLOW_SENSOR false      // Waterstroomsensor
+#define ENABLE_EMAIL_NOTIFICATION false  // E-mail notificaties
 
 //=====================================================================
 // CONFIGURATIE - GEBRUIKERS KUNNEN DEZE INSTELLINGEN AANPASSEN
@@ -80,6 +80,8 @@ struct TempSettings {
   float temp_hoog_grens = 25.0;  // Grens tussen midden en hoog °C
   
   char systeemnaam[32] = "Hydro Systeem 1";  // Systeemnaam als char array
+
+  bool continuModus = false;     // Standaard uit (interval modus)
   
   // Nieuwe velden voor flowsensor
   #ifdef ENABLE_FLOW_SENSOR
