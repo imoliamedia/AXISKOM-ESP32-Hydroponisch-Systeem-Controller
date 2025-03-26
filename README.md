@@ -1,6 +1,6 @@
 # ESP32 Hydroponisch Systeem Controller
 
-Een open-source controller voor hydroponische systemen gebaseerd op de ESP32 microcontroller, ontwikkeld als onderdeel van het AXISKOM kennisplatform voor zelfredzaamheid en zelfvoorzienend leven. Deze controller regelt de pompwerking op basis van temperatuur en tijd, en kan optioneel ook de waterstroming monitoren.
+Een open-source controller voor hydroponische systemen gebaseerd op de ESP32 microcontroller, ontwikkeld als onderdeel van het AXISKOM kennisplatform voor zelfredzaamheid en zelfvoorzienend leven. Deze controller regelt de pompwerking op basis van temperatuur en tijd, en kan optioneel ook de waterstroming monitoren en LED-verlichting aansturen.
 
 ## Over AXISKOM
 
@@ -16,8 +16,10 @@ AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, preppi
 - Handmatige override voor de pomp
 - Persistente instellingen (blijven bewaard bij stroomuitval)
 - Modulaire codestructuur voor eenvoudige uitbreidingen
-- **NIEUW:** Waterstroming monitoring met de YF-S201 flowsensor (optioneel)
-- **NIEUW:** E-mail waarschuwingen bij detectie van problemen (optioneel)
+- **Flowsensor:** Waterstroming monitoring met de YF-S201 flowsensor (optioneel)
+- **E-mail:** Waarschuwingen bij detectie van problemen (optioneel)
+- **NIEUW:** LED-verlichting besturing met tijdschema (optioneel)
+- **NIEUW:** Lichtsensor (BH1750) voor automatische LED-helderheid (optioneel)
 
 ## Hardware Vereisten
 
@@ -26,8 +28,11 @@ AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, preppi
 - Relaismodule (voor pompbesturing)
 - DC waterpomp (of een ander apparaat dat je wilt aansturen)
 - Voeding voor de ESP32 en pomp
-- **NIEUW:** YF-S201 waterstroomsensor (optioneel)
-- Optioneel: behuizing, aansluitklemmen, etc.
+- **Optioneel:** YF-S201 waterstroomsensor
+- **Optioneel:** MOSFET-module voor LED-aansturing (bijv. IRLZ44N of FQP30N06L)
+- **Optioneel:** LED-verlichting (12V of 24V strips)
+- **Optioneel:** BH1750 lichtsensor (voor automatische LED-helderheid)
+- **Optioneel:** Behuizing, aansluitklemmen, etc.
 
 ## Aansluitschema
 
@@ -35,12 +40,20 @@ AXISKOM is een Nederlandstalig kennisplatform gericht op zelfredzaamheid, preppi
 ESP32 GPIO4  ──── DS18B20 Data (met 4.7kΩ pull-up weerstand naar 3.3V)
 ESP32 GPIO5  ──── Relais ingang
 ESP32 GPIO14 ──── YF-S201 Flowsensor signaal (gele draad) (optioneel)
+ESP32 GPIO16 ──── MOSFET Gate voor LED-besturing (optioneel)
 ESP32 3.3V   ──── DS18B20 VCC
 ESP32 GND    ──── DS18B20 GND
 ESP32 GND    ──── Relais GND
 ESP32 5V     ──── Relais VCC
 ESP32 5V     ──── YF-S201 VCC (rode draad) (optioneel)
 ESP32 GND    ──── YF-S201 GND (zwarte draad) (optioneel)
+ESP32 GND    ──── MOSFET Source (optioneel)
+
+# Lichtsensor (optioneel)
+ESP32 GPIO21 ──── BH1750 SDA
+ESP32 GPIO22 ──── BH1750 SCL
+ESP32 3.3V   ──── BH1750 VCC
+ESP32 GND    ──── BH1750 GND
 ```
 
 ## Project Structuur
@@ -54,10 +67,9 @@ Het project is modulair opgezet met de volgende bestanden:
 - **SensorControl.cpp** - Temperatuursensor en pompbesturingsfuncties
 - **WebServer.cpp** - Webserver en API-endpoints
 - **WebUI.h** - HTML, CSS en JavaScript voor de webinterface
-- **FlowSensor.h** - Header voor de flowsensor module (optioneel)
-- **FlowSensor.cpp** - Implementatie van de flowsensorfuncties (optioneel)
-- **EmailNotification.h** - Header voor e-mailnotificaties (optioneel)
-- **EmailNotification.cpp** - Implementatie van e-mailnotificaties (optioneel)
+- **FlowSensor.h/.cpp** - Flowsensor module (optioneel)
+- **EmailNotification.h/.cpp** - E-mailnotificaties (optioneel)
+- **LEDControl.h/.cpp** - LED-verlichting besturing (optioneel)
 
 ## Installatie
 
@@ -68,11 +80,12 @@ Het project is modulair opgezet met de volgende bestanden:
    - OneWire
    - DallasTemperature
    - ESP Mail Client (alleen nodig voor e-mail notificaties)
+   - BH1750 (alleen nodig voor lichtsensor)
 4. Clone of download deze repository
 5. Open het `ESP32_Hydroponics.ino` bestand in de Arduino IDE
 6. Configureer de WiFi instellingen in `SettingsImpl.cpp`
 7. Controleer de pin instellingen in `Settings.h` en pas aan indien nodig
-8. Activeer optionele functies in `Settings.h` indien gewenst (zie 'Optionele Functionaliteit')
+8. Activeer optionele functies in `Settings.h` indien gewenst
 9. Upload de code naar je ESP32
 10. Open de seriële monitor om het IP-adres te vinden
 11. Navigeer naar dat IP-adres in een webbrowser om de interface te openen
@@ -80,54 +93,23 @@ Het project is modulair opgezet met de volgende bestanden:
 # Benodigde Bibliotheken
 
 ## Basis Bibliotheken (altijd vereist)
-- **WiFi.h** - Ingebouwd in ESP32 core, geen aparte installatie nodig
-- **EEPROM.h** - Ingebouwd in ESP32 core, geen aparte installatie nodig
-- **WebServer.h** - Ingebouwd in ESP32 core, geen aparte installatie nodig
-- **ArduinoJson** - Installeren via Arduino Library Manager
-  - Versie: minimaal 6.x
-  - Gebruikt voor: JSON-verwerking in API-responses en instellingen
-- **OneWire** - Installeren via Arduino Library Manager
-  - Versie: minimaal 2.3.5
-  - Gebruikt voor: Communicatie met de DS18B20 temperatuursensor
-- **DallasTemperature** - Installeren via Arduino Library Manager
-  - Versie: minimaal 3.8.0
-  - Gebruikt voor: DS18B20 temperatuursensor besturing
-- **time.h** - Ingebouwd in ESP32 core, geen aparte installatie nodig
+- **WiFi.h** - Ingebouwd in ESP32 core
+- **EEPROM.h** - Ingebouwd in ESP32 core
+- **WebServer.h** - Ingebouwd in ESP32 core
+- **ArduinoJson** - Installeren via Arduino Library Manager (min. v6.x)
+- **OneWire** - Installeren via Arduino Library Manager (min. v2.3.5)
+- **DallasTemperature** - Installeren via Arduino Library Manager (min. v3.8.0)
+- **time.h** - Ingebouwd in ESP32 core
 
-## Aanvullende Bibliotheken (optioneel, afhankelijk van geactiveerde functies)
+## Aanvullende Bibliotheken (optioneel)
 
 ### Voor E-mail Notificaties
-- **ESP_Mail_Client** - Installeren via Arduino Library Manager
-  - Versie: minimaal 2.x
-  - Gebruikt voor: Het verzenden van e-mails via SMTP (Gmail)
+- **ESP_Mail_Client** - Installeren via Arduino Library Manager (min. v2.x)
   - Alleen nodig als `ENABLE_EMAIL_NOTIFICATION` is ingeschakeld
 
-## Installatie van Bibliotheken
-
-### Via Arduino Library Manager
-1. Open Arduino IDE
-2. Ga naar Sketch > Include Library > Manage Libraries...
-3. Zoek naar de benodigde bibliotheek
-4. Klik op "Install" voor de juiste versie
-
-### Handmatige installatie (alternatief)
-1. Download de ZIP van de GitHub repository van de bibliotheek
-2. In Arduino IDE: Sketch > Include Library > Add .ZIP Library...
-3. Selecteer het gedownloade ZIP-bestand
-
-## Bibliotheken Compatibiliteit
-
-| Bibliotheek | Geteste Versie | ESP32 Core Compatibiliteit |
-|-------------|----------------|----------------------------|
-| ArduinoJson | 6.19.4         | 1.0.6 en hoger            |
-| OneWire     | 2.3.5          | Alle versies               |
-| DallasTemperature | 3.9.0    | Alle versies               |
-| ESP_Mail_Client | 2.7.8      | 1.0.6 en hoger            |
-
-## Opmerkingen
-- De ESP32 core (esp32 by Espressif Systems) moet geïnstalleerd zijn via de Boards Manager
-- Aanbevolen versie van ESP32 core is 1.0.6 of hoger
-- Alle bibliotheken zijn getest met Arduino IDE 1.8.19 en 2.x
+### Voor Lichtsensor
+- **BH1750** - Installeren via Arduino Library Manager
+  - Alleen nodig als `ENABLE_LIGHT_SENSOR` is ingeschakeld
 
 ## Configuratie Aanpassen
 
@@ -142,12 +124,6 @@ const char* password = "JouwWiFiWachtwoord";
 ```
 
 ### Statische IP-Configuratie
-Om het beheren van meerdere systemen te vereenvoudigen, kan nu een vast IP-adres worden geconfigureerd:
-
-1. Open het bestand `SettingsImpl.cpp`
-2. Zoek de statische IP-configuratie sectie
-3. Stel `useStaticIP` in op `true` om een vast IP-adres te gebruiken
-4. Configureer het gewenste IP-adres, gateway, subnet en DNS:
 
 ```cpp
 // Statische IP configuratie
@@ -158,224 +134,112 @@ IPAddress subnet(255, 255, 255, 0);         // Subnet mask
 IPAddress dns(192, 168, 0, 1);              // DNS server
 ```
 
-### Tijdzone en NTP Server
-
-Je kunt de tijdzone en NTP server configureren in `SettingsImpl.cpp`:
-
-```cpp
-// NTP server configuratie
-const char* ntpServer = "pool.ntp.org";
-const char* timezone = "CET-1CEST,M3.5.0,M10.5.0/3"; // Centraal-Europese tijd met zomertijd
-```
-
 ### Hardware Pinnen
 
 Als je andere pinnen gebruikt voor je sensoren of relais, pas deze aan in `Settings.h`:
 
 ```cpp
-// Pindefinities voor ESP32
+// Pindefinities
 #define ONE_WIRE_BUS 4    // GPIO4 voor DS18B20 temperatuursensor
 #define RELAY_PIN 5       // GPIO5 voor relais
 #define FLOW_SENSOR_PIN 14 // GPIO14 voor YF-S201 flowsensor (optioneel)
+#define LED_PWM_PIN 16    // GPIO16 voor LED MOSFET aansturing (optioneel)
+
+// I2C pinnen voor lichtsensor (optioneel)
+#define I2C_SDA 21        // GPIO21 voor I2C SDA
+#define I2C_SCL 22        // GPIO22 voor I2C SCL
 ```
-
-### Nachtmodus Tijden
-
-De nachtmodus tijden kunnen worden aangepast in `Settings.h`:
-
-```cpp
-// Constanten voor nachtmodus
-const int NACHT_START_UUR = 22; // Nacht begint om 22:00
-const int NACHT_EIND_UUR = 6;   // Nacht eindigt om 06:00
-```
-
-### Pompcycli Instellingen
-
-De standaard instellingen voor de pompcycli kunnen worden aangepast in `Settings.h` of via gebruikersinterface. Deze bepalen hoe lang de pomp aan en uit is, afhankelijk van de temperatuur:
-
-### Weergave van Pompcycli in Minuten
-De gebruikersinterface is verbeterd door de pompcycli-tijden in minuten weer te geven in plaats van seconden. Dit maakt het systeem intuïtiever in gebruik:
-
-- In de webinterface worden alle tijden nu weergegeven en ingevoerd in minuten
-- Decimale waarden worden ondersteund (bijv. 0.5 minuten voor 30 seconden)
-- De conversie gebeurt automatisch in de achtergrond; het systeem werkt intern nog steeds met seconden
-
-```cpp
-// Standaard instellingen voor pomp cycli (in seconden)
-struct TempSettings {
-  uint16_t magic = EEPROM_MAGIC;   // Magic number om te controleren of EEPROM geldig is
-  int temp_laag_aan = 120;     // 2 minuten AAN als temp < 18°C
-  int temp_laag_uit = 1080;    // 18 minuten UIT als temp < 18°C
-  
-  int temp_midden_aan = 120;   // 2 minuten AAN als temp 18-25°C
-  int temp_midden_uit = 780;   // 13 minuten UIT als temp 18-25°C
-  
-  int temp_hoog_aan = 120;     // 2 minuten AAN als temp > 25°C
-  int temp_hoog_uit = 480;     // 8 minuten UIT als temp > 25°C
-  
-  int nacht_aan = 60;          // 1 minuut AAN 's nachts
-  int nacht_uit = 1740;        // 29 minuten UIT 's nachts
-  
-  float temp_laag_grens = 18.0;  // Grens tussen laag en midden °C
-  float temp_hoog_grens = 25.0;  // Grens tussen midden en hoog °C
-  
-  char systeemnaam[32] = "Hydro Systeem 1";  // Systeemnaam als char array
-  
-  // Flowsensor instellingen (indien geactiveerd)
-  float minFlowRate = 1.0;       // Minimale waterstroming in L/min
-  bool flowAlertEnabled = true;  // E-mail alerts voor flowproblemen
-  
-  // E-mail notificatie instellingen (indien geactiveerd)
-  char emailUsername[64] = "jouw.email@gmail.com";  // Gmail adres
-  char emailPassword[64] = "jouw-app-wachtwoord";   // App-specifiek wachtwoord
-  char emailRecipient[64] = "ontvanger@email.com";  // Ontvanger e-mailadres
-};
-```
-
-## Interval en Continue Modus
-
-De controller ondersteunt nu twee verschillende bedrijfsmodi voor de pomp:
-
-### Interval Modus (Hydro Toren)
-Dit is de standaard bedrijfsmodus voor hydroponische torens. De pomp werkt in cycli van aan- en uit-tijden, afhankelijk van de temperatuur. Deze modus is ideaal voor systemen waar het water moet circuleren met pauzes, zoals bij verticale tuinbouw of hydroponische torens.
-
-- Configureerbare aan/uit-tijden voor verschillende temperatuurbereiken
-- Speciale nachtmodus instellingen
-- De controller kiest automatisch de juiste cyclustijden op basis van de gemeten temperatuur
-
-### Continue Modus (NFT/DFT)
-Deze nieuwe modus is speciaal ontwikkeld voor Nutrient Film Technique (NFT) en Deep Flow Technique (DFT) systemen. In deze modus blijft de pomp constant aan om een continue waterstroom te garanderen. Dit is essentieel voor systemen waar de wortels constant in een dunne film voedingsoplossing moeten baden.
-
-- Pomp blijft 24/7 draaien zonder onderbrekingen
-- Ideaal voor NFT en DFT hydroponische systemen
-- Temperatuurgebaseerde cycli worden volledig overgeslagen
-
-### Omschakelen tussen Modi
-Je kunt eenvoudig tussen interval en continue modus schakelen via de webinterface:
-
-1. Ga naar het tabblad "Instellingen" in de webinterface
-2. Onder "Systeem Type" vind je de optie om te kiezen tussen "Interval modus" en "Continue modus"
-3. Selecteer de gewenste modus en klik op "Instellingen opslaan"
-4. De controller past de nieuwe modus onmiddellijk toe
-
-### Handmatige Override
-Ongeacht welke bedrijfsmodus actief is, kun je altijd handmatig ingrijpen:
-
-- De knoppen voor handmatige bediening ("Pomp AAN" en "Pomp UIT") blijven beschikbaar
-- Handmatige bediening overschrijft tijdelijk beide automatische modi
-- Gebruik "Terug naar automatisch" om de controller terug te laten keren naar de gekozen bedrijfsmodus
-
-Deze flexibiliteit maakt de controller geschikt voor een breed scala aan verschillende hydroponische systemen, van kleine huiskamerprojecten tot grotere productieopstellingen.
 
 ## Optionele Functionaliteit
 
 Het systeem ondersteunt de volgende optionele functies die kunnen worden in- of uitgeschakeld:
 
 - Waterstroming monitoring met de YF-S201 flowsensor
-- E-mail notificaties bij problemen (zoals geen waterstroming wanneer de pomp actief is)
+- E-mail notificaties bij problemen 
+- LED-verlichting besturing met tijdschema
+- Lichtsensor (BH1750) voor automatische LED-helderheid
 
 ### Functionaliteit activeren
 
-Om een functie te activeren, volg deze stappen:
+Om een functie te activeren, pas deze instellingen aan in `Settings.h`:
 
-1. Open het bestand `Settings.h` in de Arduino IDE
-2. Zoek naar de CONFIGURATIE sectie bovenaan het bestand
-3. Verander `false` naar `true` voor de functies die je wilt activeren
-4. Upload de code opnieuw naar je ESP32
-
-Bijvoorbeeld, om de flowsensor te activeren, verander:
 ```cpp
-#define ENABLE_FLOW_SENSOR false      // Waterstroomsensor
-```
-naar:
-```cpp
-#define ENABLE_FLOW_SENSOR true       // Waterstroomsensor
+// Configuratie voor optionele functionaliteit
+// TRUE = ingeschakeld, FALSE = uitgeschakeld
+#define ENABLE_FLOW_SENSOR true      // Waterstroomsensor
+#define ENABLE_EMAIL_NOTIFICATION true  // E-mail notificaties
+#define ENABLE_LED_CONTROL true      // LED verlichting besturing
+#define ENABLE_LIGHT_SENSOR false    // GY-302 BH1750 lichtsensor
 ```
 
-### E-mail Notificaties Configureren
+## LED Verlichting Besturing
 
-Als je e-mailnotificaties wilt gebruiken:
+### Basisinstellingen
+De LED-besturingsmodule biedt de volgende functies:
+- Automatisch in- en uitschakelen op basis van tijd
+- Instelbare helderheid (0-100%)
+- Handmatige override
 
-1. Activeer zowel de flowsensor als e-mailnotificaties in `Settings.h`
-2. Voor Gmail-gebruikers: maak een app-specifiek wachtwoord aan in je Google Account instellingen
-3. Configureer je e-mailgegevens via de webinterface onder het "Flowsensor" tabblad
-4. Klik op "Test E-mail Versturen" om je instellingen te testen
+### Lichtsensor (optioneel)
+Als je een BH1750 lichtsensor aansluit, kun je:
+- LED-helderheid automatisch aanpassen op basis van omgevingslicht
+- Minimale en maximale lux-waarden instellen
+- LED's uitschakelen bij voldoende natuurlijk licht
 
-## Gebruiksaanwijzing
+### LED Hardware Aansluiten
+1. Sluit een MOSFET (bijv. IRLZ44N) aan op GPIO16
+2. Verbind de LED-strip met de MOSFET (Source naar GND, Drain naar LED-, LED+ naar voeding)
+3. Zorg voor een gemeenschappelijke GND tussen ESP32 en LED-voeding
 
-### Enkelvoudig Systeem
+### LED Configureren
+Je kunt de LED-verlichting configureren via het tabblad "LED Verlichting" in de webinterface:
+1. Stel de tijden in waarop de LED's aan en uit moeten gaan
+2. Bepaal de gewenste helderheid (0-100%)
+3. Kies tussen automatische en handmatige modus
+4. Als je een lichtsensor gebruikt, configureer de lux-drempelwaarden
 
-Na het uploaden en verbinden met WiFi kun je de webinterface openen op het IP-adres van de ESP32.
+### Lichtsensor Aansluiten
+Als je automatische helderheidsregeling wilt op basis van omgevingslicht:
+1. Sluit een BH1750 lichtsensor aan op de I2C-pinnen (SDA=GPIO21, SCL=GPIO22)
+2. Activeer de lichtsensor in `Settings.h` door `ENABLE_LIGHT_SENSOR` op `true` te zetten
+3. Configureer in de webinterface de minimale en maximale lux-waarden
 
-### Flowsensor
+## Interval en Continue Modus
 
-Als je de flowsensor hebt geactiveerd:
+De controller ondersteunt twee verschillende bedrijfsmodi voor de pomp:
 
-1. De gemeten waterstroming wordt weergegeven op de statuskaart bovenaan de webinterface
-2. In het tabblad "Flowsensor" kun je de minimale flowrate en e-mail instellingen configureren
-3. Als de pomp actief is maar er wordt geen waterstroming gedetecteerd, verschijnt er een waarschuwing
-4. Indien geconfigureerd, wordt er een e-mail verzonden bij detectie van problemen
+### Interval Modus (Hydro Toren)
+Voor hydroponische torens met cyclische besproeiing:
+- Configureerbare aan/uit-tijden voor verschillende temperatuurbereiken
+- Speciale nachtmodus instellingen
+- Automatische selectie van cyclustijden op basis van temperatuur
 
-### Meerdere Systemen
+### Continue Modus (NFT/DFT)
+Voor Nutrient Film Technique en Deep Flow Technique systemen:
+- Pomp blijft 24/7 draaien zonder onderbrekingen
+- Ideaal voor NFT en DFT hydroponische systemen
+- Temperatuurgebaseerde cycli worden overgeslagen
 
-Als je meerdere hydroponische systemen gebruikt, bieden we een Master Dashboard HTML-bestand (ESP32Hydro.html) waarmee je al je systemen op één pagina kunt beheren. Je kunt dit dashboard vinden in de GitHub repository:
-
-1. Download het `ESP32Hydro.html` bestand van de repository
-2. Open het bestand in een webbrowser
-3. Klik op "+ Nieuw Systeem" om je systemen toe te voegen
-4. Vul de systeemnaam en het IP-adres in voor elk van je systemen
-5. Alle systemen worden op het dashboard weergegeven en kunnen van daaruit worden beheerd
-
-Het dashboard slaat je systemen lokaal op, zodat je ze niet opnieuw hoeft toe te voegen wanneer je de pagina later opnieuw bezoekt.
-
-### Bediening
-
-Op het tabblad "Bediening" kun je:
-- De huidige temperatuur, tijd en pompstatus zien
-- De pomp handmatig AAN of UIT schakelen
-- Terug naar automatische modus gaan
-
-### Instellingen
-
-Op het tabblad "Instellingen" kun je:
-- De systeemnaam aanpassen
-- Temperatuurgrenzen instellen
-- Aan/uit tijden voor elke temperatuurreeks configureren
-- Nacht cyclustijden instellen
-
-## AXISKOM Integratie
-
-Dit project past binnen de volgende categorieën van het AXISKOM platform:
-
-### Zelfvoorzienend
-- **Tuinieren**: Optimaliseer je eigen voedselproductie met hydroponische systemen
-- **Energie & Water**: Efficiënt waterbeheer voor duurzame tuinbouw
-- **Opslag & Bewaren**: Automatisering voor consistente groeiomstandigheden
-
-### Tools
-Deze controller kan worden gezien als een praktisch hulpmiddel binnen de AXISKOM tools-categorie, vergelijkbaar met de andere calculators en planners op het platform.
-
-## Zelf uitbreiden
-
-De code is modulair opgezet om eenvoudig uitbreidingen mogelijk te maken. Nieuwe functies kunnen worden toegevoegd zonder de kernfunctionaliteit te verstoren.
-
-Om nieuwe functionaliteit toe te voegen:
-1. Creëer een nieuwe module (bijvoorbeeld PHSensor.cpp)
-2. Voeg functieprototypes toe aan `Settings.h`
-3. Voeg je initialisatiecode toe in `setup()`
-4. Voeg je update/loop code toe in `loop()`
-5. Update de webinterface in `WebUI.h` waar nodig
-
-Mogelijke uitbreidingen:
-- pH-sensor ondersteuning
-- EC (geleidbaarheid) sensor
-- LED-verlichting besturing
-- Voedingsdoseersysteem
-- Waterniveau monitoring
-- Datalogging naar SD-kaart of externe service
-- Integratie met andere AXISKOM tools zoals de Moestuin Planner
+### Omschakelen tussen Modi
+Je kunt eenvoudig tussen interval en continue modus schakelen via de webinterface:
+1. Ga naar het tabblad "Instellingen"
+2. Selecteer de gewenste modus onder "Systeem Type"
+3. Klik op "Instellingen opslaan"
 
 ## Problemen oplossen
+
+### LED's werken niet
+- Controleer of de LED-functionaliteit is geactiveerd in `Settings.h`
+- Controleer of de MOSFET correct is aangesloten (Gate naar GPIO16)
+- Meet de spanning op de Gate van de MOSFET tijdens bediening
+- Verifieer dat de LED-strip en voeding correct zijn aangesloten
+- Controleer in de webinterface of de tijdsinstellingen correct zijn
+
+### Lichtsensor geeft geen waarden
+- Controleer of de sensor correct is aangesloten (SDA=GPIO21, SCL=GPIO22)
+- Verifieer dat de I2C pull-up weerstanden (4.7kΩ) aanwezig zijn
+- Controleer het I2C-adres van je BH1750 (standaard 0x23 of 0x5C)
+- Gebruik een I2C scanner sketch om de sensor te detecteren
 
 ### Flowsensor detecteert geen water
 - Controleer of de sensor correct is aangesloten (rood=5V, zwart=GND, geel=GPIO14)
@@ -388,6 +252,16 @@ Mogelijke uitbreidingen:
 - Voor Gmail: zorg ervoor dat je een app-specifiek wachtwoord gebruikt
 - Controleer je internetverbinding
 - Activeer debug modus voor meer informatie in de seriële monitor
+
+## Uitbreidingsmogelijkheden
+
+Mogelijke toekomstige uitbreidingen:
+- pH-sensor ondersteuning
+- EC (geleidbaarheid) sensor integratie
+- Automatische nutriëntendosering
+- Waterniveau monitoring
+- Integratie met andere systemen via MQTT
+- Datalogging naar SD-kaart of cloud diensten
 
 ## Community
 
