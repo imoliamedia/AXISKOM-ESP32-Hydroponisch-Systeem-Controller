@@ -1,116 +1,138 @@
-//=========================================================================
-// ESP32 Hydroponisch Systeem Controller
-// Hoofdbestand
-// 
-// Een open-source hydroponisch systeem controller voor ESP32
-// Onderdeel van het AXISKOM kennisplatform voor zelfredzaamheid
-// 
-// Project: Zelfvoorzienend Tuinieren & Duurzaam Waterbeheer
-// Ontwikkeld voor AXISKOM - "Zelfredzaamheid begint bij kennis"
-// 
-// GitHub: https://github.com/imoliamedia/AXISKOM-ESP32-Hydroponisch-Systeem-Controller
-// Website: https://axiskom.nl
-//=========================================================================
+/*
+ * ESP32 Hydroponisch Systeem Controller
+ * 
+ * Een controller voor hydroponische systemen die pompcycli regelt op basis 
+ * van watertemperatuur, met optionele modules voor flowsensing,
+ * e-mailnotificaties en LED-verlichting.
+ * 
+ * De controller biedt een webinterface voor monitoring en configuratie
+ * en ondersteunt zowel interval modus (hydro toren) als continue modus (NFT/DFT).
+ */
 
 #include "Settings.h"
-#include <WiFi.h>
-#include <EEPROM.h>
-#include <time.h>
 
-// Optionele modulen op basis van configuratie
-#ifdef ENABLE_FLOW_SENSOR
-  #include "FlowSensor.h"
-#endif
-
-#if defined(ENABLE_FLOW_SENSOR) && defined(ENABLE_EMAIL_NOTIFICATION)
-  #include "EmailNotification.h"
-#endif
-
-// Globale variabelen die in meerdere modules worden gebruikt
-TempSettings settings;
-float currentTemp = 0.0;
-bool pumpState = false;
-bool overrideActive = false;
-bool overridePumpState = false;
-unsigned long cycleStartTime = 0;
-bool isNachtModus = false;
-char currentDateTime[64] = "Tijd wordt gesynchroniseerd...";
+// Globale variabelen
+float currentTemp = 0.0;          // Huidige temperatuur in °C
+bool pumpActive = false;          // Huidige pompstatus
+unsigned long pumpStartTime = 0;  // Tijdstip waarop de pomp is ingeschakeld
+unsigned long pumpStopTime = 0;   // Tijdstip waarop de pomp is uitgeschakeld
+unsigned long pumpRunTime = 0;    // Totale draaitijd van de pomp (seconden)
+int currentCycleOn = 0;           // Huidige AAN tijd in seconden
+int currentCycleOff = 0;          // Huidige UIT tijd in seconden
+bool manualOverride = false;      // Handmatige besturing actief
+TempSettings settings;            // Instellingen geladen uit EEPROM
 
 void setup() {
+  // Start seriële communicatie
   Serial.begin(115200);
-  EEPROM.begin(512);
-  
-  Serial.println("ESP32 Hydroponisch Systeem Controller opstarten...");
-  
-  // Pins configureren
-  pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);  // Relais uit bij opstarten
+  Serial.println("\n\nESP32 Hydroponisch Systeem Controller");
+  Serial.println("Opstarten...");
   
   // Laad instellingen uit EEPROM
   loadSettings();
   
-  // Start temperatuursensor
-  setupSensors();
+  // Configureer pompaansturing
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW); // Pomp uit bij opstarten
   
-  // Start WiFi
+  // Initialiseer DS18B20 temperatuursensor
+  setupTemperatureSensor();
+  
+  // Initialiseer WiFi
   setupWiFi();
   
-  // Configureer tijdserver met zomertijd ondersteuning
-  setupTimeSync();
+  // Initialiseer NTP tijd synchronisatie
+  setupTime();
   
-  // Wacht op synchronisatie en update tijd
-  updateCurrentTime();
+  // Initialiseer optionele modules
   
-  // Flow sensor initialiseren indien ingeschakeld
-  #ifdef ENABLE_FLOW_SENSOR
+  #if defined(ENABLE_FLOW_SENSOR) && ENABLE_FLOW_SENSOR == true
     setupFlowSensor();
   #endif
   
-  // E-mail client initialiseren indien ingeschakeld
-  #if defined(ENABLE_FLOW_SENSOR) && defined(ENABLE_EMAIL_NOTIFICATION)
-    setupEmailClient();
+  #if defined(ENABLE_FLOW_SENSOR) && ENABLE_FLOW_SENSOR == true && defined(ENABLE_EMAIL_NOTIFICATION) && ENABLE_EMAIL_NOTIFICATION == true
+    setupEmailNotification();
   #endif
   
-  // Web server routes instellen
+  #ifdef ENABLE_LED_CONTROL
+    setupLEDControl();
+  #endif
+  
+  // Initialiseer webserver
   setupWebServer();
   
-  // Setup voltooid
-  Serial.println("Setup voltooid, systeem actief");
-  cycleStartTime = millis();
+  // Haal huidige temperatuur op
+  updateTemperature();
+  
+  // Bereken initiële pompcyclus tijden
+  updatePumpCycleTimes();
+  
+  Serial.println("Systeem geïnitialiseerd en klaar voor gebruik!");
+  Serial.print("Je kunt de webinterface openen op: http://");
+  Serial.println(WiFi.localIP());
 }
 
 void loop() {
-  // Handelt HTTP verzoeken af
-  handleWebServer();
-  
-  // Update tijd elke minuut
-  static unsigned long lastTimeUpdate = 0;
-  if (millis() - lastTimeUpdate > 60000) {
-    updateCurrentTime();
-    lastTimeUpdate = millis();
-  }
-  
-  // Controleer WiFi verbinding en probeer opnieuw te verbinden indien nodig
+  // Beheer WiFi verbinding
   checkWiFiConnection();
   
-  // Lees temperatuur elke 5 seconden
+  // Beheer tijd synchronisatie
+  checkTimeSync();
+  
+  // Verwerk webserver verzoeken
+  handleWebClient();
+  
+  // Update temperatuur periodiek (elke 10 seconden)
   static unsigned long lastTempUpdate = 0;
-  if (millis() - lastTempUpdate > 5000) {
-    readTemperature();
+  if (millis() - lastTempUpdate > 10000) {
+    updateTemperature();
+    updatePumpCycleTimes();
     lastTempUpdate = millis();
   }
   
-  // Als override niet actief is, volg dan de normale cyclus
-  if (!overrideActive) {
-    updatePumpCycle();
+  // Beheer pompbesturing, tenzij in handmatige modus
+  if (!manualOverride) {
+    managePump();
   }
   
-  // Update flow sensor indien ingeschakeld
-  #ifdef ENABLE_FLOW_SENSOR
-    static unsigned long lastFlowUpdate = 0;
-    if (millis() - lastFlowUpdate > 1000) {  // Update elke seconde
-      updateFlowSensor();
-      lastFlowUpdate = millis();
+  // Update systeemstatistieken (elke seconde)
+  static unsigned long lastStatsUpdate = 0;
+  if (millis() - lastStatsUpdate > 1000) {
+    updateRuntime();
+    lastStatsUpdate = millis();
+  }
+  
+  #if defined(ENABLE_FLOW_SENSOR) && ENABLE_FLOW_SENSOR == true
+    checkFlowRate();
+  #endif
+  
+  #ifdef ENABLE_LED_CONTROL
+    // Update LED status elke seconde
+    static unsigned long lastLEDUpdate = 0;
+    if (millis() - lastLEDUpdate > 1000) {
+      updateLEDState();
+      lastLEDUpdate = millis();
     }
   #endif
+}
+
+// Update pomp draaitijd statistieken
+void updateRuntime() {
+  if (pumpActive) {
+    pumpRunTime = pumpRunTime + 1;
+  }
+}
+
+// Stel de pomp in op handmatige besturing
+void setPumpManual(bool state) {
+  manualOverride = true;
+  setRelayState(state);
+  Serial.print("Pomp handmatig ingesteld op: ");
+  Serial.println(state ? "AAN" : "UIT");
+}
+
+// Schakel terug naar automatische modus
+void setPumpAuto() {
+  manualOverride = false;
+  Serial.println("Pomp terug naar automatische modus");
 }

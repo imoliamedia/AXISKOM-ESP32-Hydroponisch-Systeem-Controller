@@ -1,29 +1,31 @@
-//=========================================================================
-// ESP32 Hydroponisch Systeem Controller
-// Email notificatie module - Implementatie
-//=========================================================================
+/*
+ * EmailNotification.cpp
+ *
+ * Implementatie van de e-mail notificatie module voor waarschuwingen
+ */
 
 #include "EmailNotification.h"
-#include <ESP_Mail_Client.h>
-#include <WiFi.h>
 
-#if defined(ENABLE_FLOW_SENSOR) && defined(ENABLE_EMAIL_NOTIFICATION)
+#if defined(ENABLE_FLOW_SENSOR) && ENABLE_FLOW_SENSOR == true && defined(ENABLE_EMAIL_NOTIFICATION) && ENABLE_EMAIL_NOTIFICATION == true
 
-// Maak een SMTP sessie object voor de e-mail verzending
+// E-mail client instances
 SMTPSession smtp;
-
-// Maak een sessie configuratie object
 Session_Config config;
 
-// Status variabelen
+// E-mail variabelen
 bool emailClientReady = false;
 unsigned long lastEmailSent = 0;
 unsigned long emailServiceStartTime = 0;
 String lastEmailError = "";
+const unsigned long MIN_EMAIL_INTERVAL = 300000; // 5 minuten tussen e-mails
 
-// Initialiseer de e-mailclient
-void setupEmailClient() {
-  Serial.println("E-mail client initialiseren...");
+// Constanten voor Gmail SMTP-server
+#define GMAIL_SMTP_SERVER "smtp.gmail.com"
+#define GMAIL_SMTP_PORT 465
+
+// Initialiseer e-mail notificatie
+void setupEmailNotification() {
+  Serial.println("E-mail notificatie module initialiseren");
   
   // Controleer of e-mailinstellingen zijn geconfigureerd
   if (strlen(settings.emailUsername) < 5 || strlen(settings.emailPassword) < 5 || 
@@ -68,6 +70,29 @@ String getLastEmailError() {
   return "Onbekende fout";
 }
 
+// Stuur waarschuwing bij flowprobleem
+bool sendFlowAlertEmail() {
+  // Deze functie wordt alleen aangeroepen als er een flowprobleem is
+  String subject = "WAARSCHUWING: Geen waterstroming in ";
+  subject += settings.systeemnaam;
+  
+  String message = "Er is geen waterstroming gedetecteerd terwijl de pomp aan staat!\n\n";
+  message += "Controleer onmiddellijk op mogelijke problemen zoals:\n";
+  message += "- Verstopte leidingen\n";
+  message += "- Lucht in het systeem\n";
+  message += "- Pomp defect\n";
+  message += "- Waterreservoir leeg\n\n";
+  message += "Dit kan schade veroorzaken aan je planten of systeemcomponenten.";
+  
+  bool result = sendEmailAlert(subject.c_str(), message.c_str());
+  if (result) {
+    Serial.println("Flow probleem e-mail verzonden");
+  } else {
+    Serial.println("Kon geen flow probleem e-mail verzenden - Reden: " + getLastEmailError());
+  }
+  return result;
+}
+
 // Verstuur een e-mailalert met het opgegeven onderwerp en bericht
 bool sendEmailAlert(const char* subject, const char* message) {
   // Reset de laatste foutmelding
@@ -109,6 +134,9 @@ bool sendEmailAlert(const char* subject, const char* message) {
   emailMessage.subject = subject;
   emailMessage.addRecipient("Hydroponisch Systeem", settings.emailRecipient);
   
+  // Haal datum en tijd op
+  String currentDateTime = getFullDateTimeString();
+  
   // Maak de inhoud van het bericht
   String textContent = String(message);
   textContent += "\n\n---------------------------\n";
@@ -122,10 +150,10 @@ bool sendEmailAlert(const char* subject, const char* message) {
   
   #ifdef ENABLE_FLOW_SENSOR
   textContent += "Huidige waterstroming: ";
-  textContent += String(currentFlowRate);
+  textContent += String(flowRate);
   textContent += " L/min\n";
   textContent += "Totaal doorgestroomd: ";
-  textContent += String(totalFlowVolume);
+  textContent += String(totalLiters);
   textContent += " L\n";
   #endif
   
@@ -158,7 +186,7 @@ bool sendEmailAlert(const char* subject, const char* message) {
   return true;
 }
 
-// Verstuur een testmail om de configuratie te controleren
+// Verstuur test e-mail
 bool sendTestEmail() {
   // Deze functie omzeilt de interval check voor test doeleinden
   String subject = "Test Email - ESP32 Hydro Systeem";
@@ -190,6 +218,9 @@ bool sendTestEmail() {
   emailMessage.subject = subject.c_str();
   emailMessage.addRecipient("Hydroponisch Systeem", settings.emailRecipient);
   
+  // Haal datum en tijd op
+  String currentDateTime = getFullDateTimeString();
+  
   // Maak de inhoud van het bericht
   String textContent = message;
   textContent += "\n\n---------------------------\n";
@@ -203,10 +234,10 @@ bool sendTestEmail() {
   
   #ifdef ENABLE_FLOW_SENSOR
   textContent += "Huidige waterstroming: ";
-  textContent += String(currentFlowRate);
+  textContent += String(flowRate);
   textContent += " L/min\n";
   textContent += "Totaal doorgestroomd: ";
-  textContent += String(totalFlowVolume);
+  textContent += String(totalLiters);
   textContent += " L\n";
   #endif
   
@@ -239,56 +270,24 @@ bool sendTestEmail() {
   return true;
 }
 
-// Verstuur een waarschuwing bij gedetecteerde flow problemen
-void triggerFlowAlert() {
-  // Eerst controleren of e-mailclient klaar is
-  if (!emailClientReady) {
-    Serial.println("WAARSCHUWING: E-mail client niet klaar, kan geen alert versturen");
-    return;
-  }
-
-  String subject = "WAARSCHUWING: Geen waterstroming in ";
-  subject += settings.systeemnaam;
+// Genereer JSON met e-mail status
+String getEmailStatusJson() {
+  DynamicJsonDocument doc(512);
   
-  String message = "Er is geen waterstroming gedetecteerd terwijl de pomp aan staat!\n\n";
-  message += "Controleer onmiddellijk op mogelijke problemen zoals:\n";
-  message += "- Verstopte leidingen\n";
-  message += "- Lucht in het systeem\n";
-  message += "- Pomp defect\n";
-  message += "- Waterreservoir leeg\n\n";
-  message += "Dit kan schade veroorzaken aan je planten of systeemcomponenten.";
+  doc["emailReady"] = emailClientReady;
+  doc["lastEmailSent"] = lastEmailSent;
+  doc["lastEmailError"] = lastEmailError;
   
-  bool result = sendEmailAlert(subject.c_str(), message.c_str());
-  if (result) {
-    Serial.println("Flow probleem e-mail verzonden");
-  } else {
-    Serial.println("Kon geen flow probleem e-mail verzenden - Reden: " + getLastEmailError());
-  }
-}
-
-#else
-
-// Dummy implementaties wanneer e-mailfunctionaliteit is uitgeschakeld
-void setupEmailClient() {
-  Serial.println("E-mail client is uitgeschakeld");
-}
-
-bool sendEmailAlert(const char* subject, const char* message) {
- 
-  return false;
-}
-
-void triggerFlowAlert() {
+  // Bereken tijd sinds laatste e-mail
+  unsigned long timeSince = millis() - lastEmailSent;
+  unsigned long minutesSince = timeSince / 60000;
   
-}
-
-bool sendTestEmail() {
+  doc["minutesSinceLastEmail"] = minutesSince;
+  doc["canSendEmail"] = (timeSince > MIN_EMAIL_INTERVAL);
   
-  return false;
+  String response;
+  serializeJson(doc, response);
+  return response;
 }
 
-String getLastEmailError() {
-  return "E-mail functionaliteit is uitgeschakeld";
-}
-
-#endif // ENABLE_FLOW_SENSOR && ENABLE_EMAIL_NOTIFICATION
+#endif // defined(ENABLE_FLOW_SENSOR) && defined(ENABLE_EMAIL_NOTIFICATION)

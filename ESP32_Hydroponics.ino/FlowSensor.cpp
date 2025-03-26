@@ -1,197 +1,159 @@
-//=========================================================================
-// ESP32 Hydroponisch Systeem Controller
-// Flow sensor module - Implementatie
-//=========================================================================
+/*
+ * FlowSensor.cpp
+ *
+ * Implementatie van de flowsensor module (YF-S201)
+ */
 
 #include "FlowSensor.h"
 
-#ifdef ENABLE_FLOW_SENSOR
+#if defined(ENABLE_FLOW_SENSOR) && ENABLE_FLOW_SENSOR == true
 
-// Globale variabelen voor flowsensor
-float currentFlowRate = 0.0;      // Huidige doorstroomsnelheid in L/min
-float totalFlowVolume = 0.0;      // Totale doorgestroomde volume in liters
-bool flowSensorError = false;     // Foutindicator voor flowsensor
-bool noFlowDetected = false;      // Indicator voor "geen flow" terwijl pomp aan staat
-unsigned long lastFlowTime = 0;   // Tijdstip van laatste flow detectie
+// Flowsensor variabelen
+volatile long flowPulseCount = 0;  // Aantal pulsen (flow)
+float flowRate = 0.0;             // Huidige stromingssnelheid in l/min
+float totalLiters = 0.0;          // Totaal aantal liters
+bool flowOk = true;               // Flowstatus (OK/probleem)
+unsigned long lastFlowCheck = 0;  // Tijdstip laatste controle
+unsigned long lastPulseTime = 0;  // Tijdstip laatste puls
 
-// Lokale (private) variabelen
-volatile unsigned long pulseCount = 0;      // Aantal getelde pulsen (volatile omdat aangepast in ISR)
-unsigned long oldPulseCount = 0;            // Vorige waarde voor berekeningen
-unsigned long flowRateTimer = 0;            // Timer voor berekening van doorstroomsnelheid
-unsigned long pumpStartTime = 0;            // Tijdstip waarop pomp is ingeschakeld
-bool checkingFlowEnabled = false;           // Staat flow controle aan (na vertraging)
-bool prevPumpState = false;                 // Vorige status van de pomp
-unsigned long lastDebugReport = 0;          // Laatste tijdstip van debug rapport
-
-// Interrupt handler voor pulstellingen
+// Interrupt functie voor flowsensor
 void IRAM_ATTR flowPulseCounter() {
-  pulseCount++;
-  lastFlowTime = millis();
+  flowPulseCount++;
+  lastPulseTime = millis();
 }
 
-// Initialisatie van de flowsensor
+// Initialiseer flowsensor
 void setupFlowSensor() {
-  Serial.println("Flowsensor initialiseren...");
+  Serial.print("Flowsensor initialiseren op pin ");
+  Serial.println(FLOW_SENSOR_PIN);
   
-  // Configureer flow sensor pin als input met pull-up weerstand
+  // Configureer pin
   pinMode(FLOW_SENSOR_PIN, INPUT_PULLUP);
   
-  // Configureer interrupt op de flow sensor pin
+  // Koppel interrupt aan pin
   attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), flowPulseCounter, FALLING);
   
-  // Initialiseer variabelen
-  resetFlowSensor();
+  // Reset variabelen
+  flowPulseCount = 0;
+  flowRate = 0.0;
   
-  Serial.println("Flowsensor geïnitialiseerd op pin " + String(FLOW_SENSOR_PIN));
+  Serial.println("Flowsensor geïnitialiseerd");
 }
 
-// Reset flowsensor tellingen en statussen
-void resetFlowSensor() {
-  pulseCount = 0;
-  oldPulseCount = 0;
-  currentFlowRate = 0.0;
-  flowSensorError = false;
-  noFlowDetected = false;
-  lastFlowTime = 0;
-  checkingFlowEnabled = false;
-  flowRateTimer = millis();
-  lastDebugReport = 0;
-}
-
-// Verwerk de sensorgegevens en bereken doorstroomsnelheid
-void processFlowSensorReading() {
-  // Bereken elke seconde de doorstroomsnelheid
-  if (millis() - flowRateTimer >= 1000) {
-    // Bereken de doorstroomsnelheid op basis van pulsen per seconde
-    // Detach interrupt tijdens berekeningen om race conditions te voorkomen
-    detachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN));
-    
-    // Bereken aantal pulsen in de afgelopen seconde
-    unsigned long pulsesDelta = pulseCount - oldPulseCount;
-    oldPulseCount = pulseCount;
-    
-    // Bereken doorstroomsnelheid op basis van pulsen per seconde
-    // Volgens datasheet: flow (L/min) = frequency (Hz) / 7.5
-    currentFlowRate = (float)pulsesDelta / FLOW_PULSE_FACTOR;
-    
-    // Bereken totale volume
-    totalFlowVolume += currentFlowRate / 60.0; // Omzetten van L/min naar L/sec en dan naar totaal
-    
-    // VERBETERDE LOGGING LOGICA:
-    // Log alleen als:
-    // 1. De pomp AAN staat en er significante flow is (> 0.5 L/min), OF
-    // 2. Debug modus is actief EN de timer is verlopen (max één bericht per 60 seconden)
-    bool significantFlow = (currentFlowRate > 0.5);
-    bool timeForDebugReport = (settings.flowSensorDebug && (millis() - lastDebugReport > 60000));
-    
-    if ((pumpState && significantFlow) || timeForDebugReport) {
-      Serial.print("Waterstroming: ");
-      Serial.print(currentFlowRate, 2);
-      Serial.print(" L/min, Totaal: ");
-      Serial.print(totalFlowVolume, 2);
-      Serial.println(" L");
-      
-      if (timeForDebugReport) {
-        lastDebugReport = millis();
-      }
-    }
-    
-    // Reset timer voor volgende meting
-    flowRateTimer = millis();
-    
-    // Her-attacheer interrupt
+// Bereken huidige flowsnelheid
+float calculateFlowRate() {
+  // Ontkoppel interrupt tijdelijk
+  detachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN));
+  
+  // Sla huidige pulsstand op en reset counter
+  long pulseCount = flowPulseCount;
+  flowPulseCount = 0;
+  
+  // Bepaal tijdsverschil sinds laatste meting
+  unsigned long currentTime = millis();
+  unsigned long elapsedTime = currentTime - lastFlowCheck;
+  lastFlowCheck = currentTime;
+  
+  // Voorkom deling door nul of onrealistische waarden
+  if (elapsedTime < 100) {
+    // Koppel interrupt opnieuw
     attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), flowPulseCounter, FALLING);
+    return flowRate; // Behoud vorige waarde
   }
+  
+  // Zet om naar seconden
+  float elapsedTimeSeconds = elapsedTime / 1000.0;
+  
+  // Bereken flowrate (pulsen/seconde / pulsen/liter = liter/seconde)
+  // Vermenigvuldig met 60 voor l/min
+  float currentFlowRate = 0.0;
+  
+  if (pulseCount > 0) {
+    currentFlowRate = (pulseCount / FLOW_PULSE_FACTOR) / elapsedTimeSeconds * 60.0;
+    
+    // Update totaal volume
+    totalLiters += (pulseCount / FLOW_PULSE_FACTOR);
+  } else {
+    currentFlowRate = 0.0;
+  }
+  
+  // Koppel interrupt opnieuw
+  attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_PIN), flowPulseCounter, FALLING);
+  
+  return currentFlowRate;
 }
 
-// Controleer de flowstatus en genereer waarschuwingen indien nodig
-void checkFlowState() {
-  // Controleer of de pompstatus is veranderd
-  if (prevPumpState != pumpState) {
-    prevPumpState = pumpState;
+// Controleer waterstroming
+void checkFlowRate() {
+  // Bereken actuele flowrate
+  flowRate = calculateFlowRate();
+  
+  // Als de pomp aan staat, controleer op problemen
+  if (pumpActive) {
+    // Wacht even na het inschakelen van de pomp (FLOW_CHECK_DELAY)
+    unsigned long pumpOnTime = millis() - pumpStartTime;
     
-    if (pumpState) {
-      // Pomp is ingeschakeld - start de timer
-      pumpStartTime = millis();
-      checkingFlowEnabled = false; // Schakel flow controle uit tijdens startvertraging
+    if (pumpOnTime > FLOW_CHECK_DELAY) {
+      // Controleer of we flow hebben
+      unsigned long timeSinceLastPulse = millis() - lastPulseTime;
       
-      // Reset flow error om nieuwe controle mogelijk te maken
-      noFlowDetected = false;
-      
-      Serial.println("Pomp ingeschakeld. Flow controle start na " + String(FLOW_CHECK_DELAY) + "ms");
-    } else {
-      // Pomp is uitgeschakeld - geen flow controle nodig
-      checkingFlowEnabled = false;
-      noFlowDetected = false;
-      
-      // Log alleen als er een status is veranderd (niet constant)
-      Serial.println("Pomp uitgeschakeld. Flow controle gedeactiveerd.");
-    }
-  }
-  
-  // Controleer of de startvertraging is verstreken om flow controle te beginnen
-  if (pumpState && !checkingFlowEnabled && (millis() - pumpStartTime >= FLOW_CHECK_DELAY)) {
-    checkingFlowEnabled = true;
-    Serial.println("Flow controle actief");
-  }
-  
-  // Controleer op "geen flow" conditie, maar alleen als:
-  // 1. De pomp aan staat
-  // 2. De startvertraging is verstreken
-  // 3. We niet in override mode zijn (handmatige besturing)
-  if (pumpState && checkingFlowEnabled && !overrideActive) {
-    // Controleer of de flow onder de minimale drempel ligt
-    if (currentFlowRate < settings.minFlowRate) {
-      // Controleer hoe lang er geen flow is (minstens 20 seconden geen significante flow)
-      if (millis() - lastFlowTime > 20000) {
-        if (!noFlowDetected) {
-          noFlowDetected = true;
-          Serial.println("WAARSCHUWING: Geen waterstroming gedetecteerd terwijl de pomp actief is!");
+      // Als er geen flow is gedetecteerd en de minimale flowrate niet wordt gehaald
+      if (flowRate < settings.minFlowRate && timeSinceLastPulse > 100000) {
+        if (flowOk) {  // Als dit de eerste keer is dat we een probleem detecteren
+          Serial.println("WAARSCHUWING: Geen of onvoldoende waterstroming gedetecteerd!");
+          Serial.print("Huidige flow: ");
+          Serial.print(flowRate);
+          Serial.print(" L/min (minimum: ");
+          Serial.print(settings.minFlowRate);
+          Serial.println(" L/min)");
           
-          // Hier zou een e-mailnotificatie worden getriggerd (wordt geïmplementeerd in EmailNotification.cpp)
-          #ifdef ENABLE_EMAIL_NOTIFICATION
+          flowOk = false;
+          
+          // Stuur e-mail notificatie indien ingeschakeld
+          #if defined(ENABLE_EMAIL_NOTIFICATION) && ENABLE_EMAIL_NOTIFICATION == true
             if (settings.flowAlertEnabled) {
-              triggerFlowAlert();
+              sendFlowAlertEmail();
             }
           #endif
         }
+      } else {
+        if (!flowOk) {  // Als we net hersteld zijn van een probleem
+          Serial.println("Waterstroming is nu OK");
+          flowOk = true;
+        }
       }
-    } else {
-      // Flow is OK, reset error status
-      noFlowDetected = false;
     }
+  } else {
+    // Als de pomp uit staat, reset de flowOk status
+    flowOk = true;
   }
 }
 
-// Update flowsensor functies, wordt aangeroepen vanuit loop()
-void updateFlowSensor() {
-  // Verwerk sensorgegevens
-  processFlowSensorReading();
+// Reset flow teller
+void resetFlowCounter() {
+  totalLiters = 0.0;
+  Serial.println("Flow teller gereset");
+}
+
+// Genereer JSON met flowsensor status
+String getFlowStatusJson() {
+  DynamicJsonDocument doc(512);
   
-  // Controleer flowstatus
-  checkFlowState();
-}
-
-#else
-
-// Dummy variabelen die in andere bestanden worden gebruikt
-float currentFlowRate = 0.0;
-float totalFlowVolume = 0.0;
-bool flowSensorError = false;
-bool noFlowDetected = false;
-unsigned long lastFlowTime = 0;
-
-// Dummy implementaties
-void setupFlowSensor() {
-  // Niets doen
-}
-
-void resetFlowSensor() {
-  // Niets doen
-}
-
-void updateFlowSensor() {
-  // Niets doen
+  doc["flowRate"] = flowRate;
+  doc["totalLiters"] = totalLiters;
+  doc["flowOk"] = flowOk;
+  doc["minFlowRate"] = settings.minFlowRate;
+  doc["flowAlertEnabled"] = settings.flowAlertEnabled;
+  
+  #ifdef ENABLE_EMAIL_NOTIFICATION
+    doc["emailEnabled"] = true;
+  #else
+    doc["emailEnabled"] = false;
+  #endif
+  
+  String response;
+  serializeJson(doc, response);
+  return response;
 }
 
 #endif // ENABLE_FLOW_SENSOR

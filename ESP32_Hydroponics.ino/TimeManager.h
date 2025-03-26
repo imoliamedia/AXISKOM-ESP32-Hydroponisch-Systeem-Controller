@@ -42,6 +42,8 @@ bool updateLocalTime() {
     return false;
   }
   
+  timeInitialized = true;
+  
   char timeBuffer[80];
   strftime(timeBuffer, 80, "%d-%m-%Y %H:%M:%S", &timeinfo);
   Serial.print("Huidige tijd: ");
@@ -63,7 +65,6 @@ void checkTimeSync() {
     
     if (updateLocalTime()) {
       lastNTPSync = millis();
-      timeInitialized = true; // BELANGRIJK: Zet deze op true
       Serial.println("Tijd succesvol gesynchroniseerd met NTP server");
     }
   }

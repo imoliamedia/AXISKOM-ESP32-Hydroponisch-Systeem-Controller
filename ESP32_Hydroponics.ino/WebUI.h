@@ -181,6 +181,42 @@ const char* WEBUI_HTML = R"rawliteral(
       background-color: #f42703;
       color: white;
     }
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 15px;
+      border-radius: 5px;
+      background: #d3d3d3;
+      outline: none;
+      opacity: 0.7;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
+      margin: 20px 0;
+    }
+    .slider:hover {
+      opacity: 1;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #d35400;
+      cursor: pointer;
+    }
+    .slider::-moz-range-thumb {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #d35400;
+      cursor: pointer;
+    }
+    .brightness-value {
+      text-align: center;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
     @media (max-width: 600px) {
       .settings-label {
         width: 100%;
@@ -194,9 +230,10 @@ const char* WEBUI_HTML = R"rawliteral(
       }
     }
   </style>
-</head>
+
+  </head>
 <body>
-  <div class="card">
+<div class="card">
     <h1 id="systemName">Hydroponisch Systeem</h1>
     <div class="temperature"><span id="temp">--</span>°C</div>
     <div class="current-time" id="dateTime">Tijd laden...</div>
@@ -232,12 +269,21 @@ const char* WEBUI_HTML = R"rawliteral(
         Waterstroming OK
       </div>
     </div>
+    
+    <div id="ledStatusData" style="display: none; margin-top: 15px; text-align: center;">
+      <div style="font-size: 18px; margin-bottom: 5px;">LED Verlichting: <span id="ledStatus">Uit</span></div>
+      <div style="font-size: 16px;">Helderheid: <span id="ledBrightness">0</span>%</div>
+      <div id="luxLevelDisplay" style="font-size: 14px; margin-top: 5px; display: none;">
+        Lichtniveau: <span id="luxLevel">--</span> lux
+      </div>
+    </div>
   </div>
 
   <div class="tab-buttons">
     <button class="tab-button active" onclick="showTab('control')">Bediening</button>
     <button class="tab-button" onclick="showTab('settings')">Instellingen</button>
     <button id="flow-tab-button" class="tab-button" onclick="showTab('flow')" style="display: none;">Flowsensor</button>
+    <button id="led-tab-button" class="tab-button" onclick="showTab('led')" style="display: none;">LED Verlichting</button>
   </div>
 
   <div id="control-tab" class="tab active card">
@@ -286,11 +332,12 @@ const char* WEBUI_HTML = R"rawliteral(
     <h3>Pompcycli instellingen</h3>
     <p style="margin-bottom: 10px; font-size: 14px; color: #666;">Je kunt tijden instellen tot op 30 seconden nauwkeurig (0.5 minuten).</p>
     <table>
-    <tr>
-      <th>Temperatuurbereik</th>
-      <th>AAN (minuten)</th>
-      <th>UIT (minuten)</th>
-    </tr>
+      <tr>
+        <th>Temperatuurbereik</th>
+        <th>AAN (minuten)</th>
+        <th>UIT (minuten)</th>
+      </tr>
+      <tr>
         <td>Laag (< <span id="laag_display">18</span>°C)</td>
         <td><input type="number" id="temp_laag_aan" min="0" step="0.1"></td>
         <td><input type="number" id="temp_laag_uit" min="0" step="0.1"></td>
@@ -358,12 +405,145 @@ const char* WEBUI_HTML = R"rawliteral(
     </div>
   </div>
 
+<div id="led-tab" class="tab card">
+    <h2>LED Verlichting Instellingen</h2>
+    
+    <div class="settings-row">
+      <div class="settings-label">LED modus:</div>
+      <select id="ledAutoMode">
+        <option value="true">Automatisch (tijdgestuurd)</option>
+        <option value="false">Handmatig</option>
+      </select>
+    </div>
+    
+    <div id="ledTimeSettings">
+      <h3>Tijdsinstellingen</h3>
+      <div class="settings-row">
+        <div class="settings-label">Inschakeltijd:</div>
+        <select id="ledStartHour">
+          <option value="0">00:00</option>
+          <option value="1">01:00</option>
+          <option value="2">02:00</option>
+          <option value="3">03:00</option>
+          <option value="4">04:00</option>
+          <option value="5">05:00</option>
+          <option value="6">06:00</option>
+          <option value="7">07:00</option>
+          <option value="8">08:00</option>
+          <option value="9">09:00</option>
+          <option value="10">10:00</option>
+          <option value="11">11:00</option>
+          <option value="12">12:00</option>
+          <option value="13">13:00</option>
+          <option value="14">14:00</option>
+          <option value="15">15:00</option>
+          <option value="16">16:00</option>
+          <option value="17">17:00</option>
+          <option value="18">18:00</option>
+          <option value="19">19:00</option>
+          <option value="20">20:00</option>
+          <option value="21">21:00</option>
+          <option value="22">22:00</option>
+          <option value="23">23:00</option>
+        </select>
+      </div>
+      
+      <div class="settings-row">
+        <div class="settings-label">Uitschakeltijd:</div>
+        <select id="ledEndHour">
+          <option value="0">00:00</option>
+          <option value="1">01:00</option>
+          <option value="2">02:00</option>
+          <option value="3">03:00</option>
+          <option value="4">04:00</option>
+          <option value="5">05:00</option>
+          <option value="6">06:00</option>
+          <option value="7">07:00</option>
+          <option value="8">08:00</option>
+          <option value="9">09:00</option>
+          <option value="10">10:00</option>
+          <option value="11">11:00</option>
+          <option value="12">12:00</option>
+          <option value="13">13:00</option>
+          <option value="14">14:00</option>
+          <option value="15">15:00</option>
+          <option value="16">16:00</option>
+          <option value="17">17:00</option>
+          <option value="18">18:00</option>
+          <option value="19">19:00</option>
+          <option value="20">20:00</option>
+          <option value="21">21:00</option>
+          <option value="22">22:00</option>
+          <option value="23">23:00</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="ledSensorSettings" style="display: none;">
+      <h3>Lichtsensor instellingen</h3>
+      <div class="settings-row">
+        <div class="settings-label">Gebruik lichtsensor:</div>
+        <select id="ledSensorMode">
+          <option value="false">Uit (vaste helderheid)</option>
+          <option value="true">Aan (automatische helderheid)</option>
+        </select>
+      </div>
+      
+      <div class="settings-row">
+        <div class="settings-label">Minimale lichtsterkte:</div>
+        <select id="ledMinLux" class="form-control">
+          <option value="50">Zeer donker (nachtverlichting)</option>
+          <option value="100">Donker (schemering)</option>
+          <option value="200">Matig licht (avondverlichting)</option>
+          <option value="300">Normaal kamerlicht</option>
+          <option value="500">Helder kamerlicht</option>
+        </select>
+        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+          Wanneer het omgevingslicht onder deze waarde komt, zullen de LEDs op maximale sterkte branden.
+        </div>
+      </div>
+
+      <div class="settings-row" style="margin-top: 15px;">
+        <div class="settings-label">Maximale lichtsterkte:</div>
+        <select id="ledMaxLux" class="form-control">
+          <option value="500">Helder kamerlicht</option>
+          <option value="800">Bij het raam (bewolkt)</option>
+          <option value="1000">Lichte werkruimte</option>
+          <option value="2000">Zeer helder (zoals buiten op een bewolkte dag)</option>
+          <option value="5000">Direct zonlicht (binnenshuis)</option>
+        </select>
+        <div style="font-size: 12px; color: #666; margin-top: 5px;">
+          Wanneer het omgevingslicht boven deze waarde komt, zullen de LEDs uitschakelen.
+        </div>
+      </div>
+    </div>
+    
+    <h3>Helderheid</h3>
+    <div class="brightness-value">Helderheid: <span id="ledBrightnessValue">0</span>%</div>
+    <input type="range" min="0" max="255" value="0" class="slider" id="ledBrightnessSlider">
+    
+    <div class="override-section">
+      <div>
+        <button onclick="activateLED(true)" class="success">LED AAN</button>
+        <button onclick="activateLED(false)" class="danger">LED UIT</button>
+      </div>
+      <div>
+        <button onclick="cancelLEDOverride()">Terug naar automatisch</button>
+      </div>
+    </div>
+    
+    <div class="settings-save">
+      <button onclick="saveLEDSettings()">Instellingen opslaan</button>
+    </div>
+  </div>
+
   <div class="version-info">
-    ESP32 Hydroponisch Systeem Controller v1.1.0<br>
+    ESP32 Hydroponisch Systeem Controller v1.2.0<br>
     <a href="https://axiskom.nl" target="_blank">Mogelijk gemaakt door Axiskom.nl</a></br>
     <a href="https://github.com/imoliamedia/AXISKOM-ESP32-Hydroponisch-Systeem-Controller" target="_blank">Axiskom GitHub Repository</a>
-    
   </div>
+  </body>
+  </html>
 
   <script>
     // Globale variabelen
@@ -376,24 +556,59 @@ const char* WEBUI_HTML = R"rawliteral(
       fetchStatus();
       fetchSettings();
       
-      // Controleer flowsensor beschikbaarheid
-      checkFlowSensorAvailable();
+      // Controleer beschikbaarheid van optionele modules
+      checkModulesAvailable();
       
-      // Als flowsensor beschikbaar is, haal de flowsensor instellingen op
+      // Start auto-refresh
+      statusRefreshInterval = setInterval(fetchStatus, 5000);
+      
+      // Initialiseer LED helderheidsslider
+      const brightnessSlider = document.getElementById('ledBrightnessSlider');
+      if (brightnessSlider) {
+        brightnessSlider.oninput = function() {
+          document.getElementById('ledBrightnessValue').textContent = Math.round(this.value / 255 * 100);
+        }
+      }
+    });
+    
+    // Controleer welke modules beschikbaar zijn
+    function checkModulesAvailable() {
       fetch('/api/config')
         .then(response => response.json())
         .then(data => {
+          // Flowsensor module
           if (data.flow_sensor_enabled) {
+            document.getElementById('flow-tab-button').style.display = 'block';
+            document.getElementById('flowSensorData').style.display = 'block';
             fetchFlowSettings();
+          } else {
+            document.getElementById('flow-tab-button').style.display = 'none';
+            document.getElementById('flowSensorData').style.display = 'none';
+          }
+          
+          // LED module
+          if (data.led_control_enabled) {
+            document.getElementById('led-tab-button').style.display = 'block';
+            document.getElementById('ledStatusData').style.display = 'block';
+            fetchLEDSettings();
+            
+            // Lichtsensor
+            if (data.light_sensor_enabled) {
+              document.getElementById('ledSensorSettings').style.display = 'block';
+              document.getElementById('luxLevelDisplay').style.display = 'block';
+            } else {
+              document.getElementById('ledSensorSettings').style.display = 'none';
+              document.getElementById('luxLevelDisplay').style.display = 'none';
+            }
+          } else {
+            document.getElementById('led-tab-button').style.display = 'none';
+            document.getElementById('ledStatusData').style.display = 'none';
           }
         })
         .catch(error => {
           console.error('Fout bij het ophalen van configuratie:', error);
         });
-      
-      // Start auto-refresh
-      statusRefreshInterval = setInterval(fetchStatus, 5000);
-    });
+    }
     
     // Tab functionaliteit
     function showTab(tabName) {
@@ -406,24 +621,6 @@ const char* WEBUI_HTML = R"rawliteral(
       
       document.getElementById(tabName + '-tab').classList.add('active');
       document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
-    }
-    
-    // Controleer of flowsensor tab moet worden weergegeven
-    function checkFlowSensorAvailable() {
-      fetch('/api/config')
-        .then(response => response.json())
-        .then(data => {
-          if (data.flow_sensor_enabled) {
-            document.getElementById('flow-tab-button').style.display = 'block';
-            document.getElementById('flowSensorData').style.display = 'block';
-          } else {
-            document.getElementById('flow-tab-button').style.display = 'none';
-            document.getElementById('flowSensorData').style.display = 'none';
-          }
-        })
-        .catch(error => {
-          console.error('Fout bij het ophalen van configuratie:', error);
-        });
     }
     
     // Status ophalen
@@ -444,7 +641,6 @@ const char* WEBUI_HTML = R"rawliteral(
           document.getElementById('nightMode').style.display = 
             isNachtModus ? 'block' : 'none';
 
-          // Update continue modus indicator
           // Update modus indicators
           document.getElementById('continuModusIndicator').style.display = 
             data.continuModus && !data.overrideActive ? 'block' : 'none';
@@ -462,40 +658,66 @@ const char* WEBUI_HTML = R"rawliteral(
           if (data.flow_sensor_enabled) {
             updateFlowStatus(data);
           }
+          
+          // Update LED status als deze beschikbaar is
+          if (data.led_control_enabled) {
+            updateLEDStatus(data);
+          }
         })
         .catch(error => {
           console.error('Fout bij het ophalen van status:', error);
-          // Optioneel: toon een foutmelding aan de gebruiker
         });
     }
-    
+
+    // Update flowsensor status
     function updateFlowStatus(data) {
-    if (!data.flow_sensor_enabled) return;
-    
-    document.getElementById('flowRate').textContent = data.flowRate.toFixed(2);
-    document.getElementById('totalFlow').textContent = data.totalFlowVolume.toFixed(1);
-    
-    // Update flow status
-    const flowStatus = document.getElementById('flowStatus');
-    flowStatus.style.display = 'block';
-    
-    if (data.noFlowDetected) {
-      flowStatus.className = 'flow-indicator flow-error';
-      flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming gedetecteerd!';
-    } else if (data.pumpState && data.flowRate <= 0) {
-      // Voeg een nieuwe conditie toe voor als de pomp aan is maar er geen stroming is
-      flowStatus.className = 'flow-indicator flow-error';
-      flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming!';
-    } else if (data.pumpState && data.flowRate > 0) {
-      flowStatus.className = 'flow-indicator flow-ok';
-      flowStatus.textContent = 'Waterstroming OK';
-    } else if (!data.pumpState) {
-      flowStatus.style.display = 'none';
+      if (!data.flow_sensor_enabled) return;
+      
+      document.getElementById('flowRate').textContent = data.flowRate.toFixed(2);
+      document.getElementById('totalFlow').textContent = data.totalFlowVolume.toFixed(1);
+      
+      // Update flow status
+      const flowStatus = document.getElementById('flowStatus');
+      flowStatus.style.display = 'block';
+      
+      if (data.noFlowDetected) {
+        flowStatus.className = 'flow-indicator flow-error';
+        flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming gedetecteerd!';
+      } else if (data.pumpState && data.flowRate <= 0) {
+        flowStatus.className = 'flow-indicator flow-error';
+        flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming!';
+      } else if (data.pumpState && data.flowRate > 0) {
+        flowStatus.className = 'flow-indicator flow-ok';
+        flowStatus.textContent = 'Waterstroming OK';
+      } else if (!data.pumpState) {
+        flowStatus.style.display = 'none';
+      }
     }
-  }
+    
+    // Update LED status
+    function updateLEDStatus(data) {
+      if (!data.led_control_enabled) return;
+      
+      const ledStatus = document.getElementById('ledStatus');
+      const ledBrightness = document.getElementById('ledBrightness');
+      
+      ledStatus.textContent = data.ledIsOn ? 'Aan' : 'Uit';
+      ledBrightness.textContent = Math.round(data.ledBrightness / 255 * 100);
+      
+      // Update slider waarde indien aanwezig
+      const slider = document.getElementById('ledBrightnessSlider');
+      if (slider) {
+        slider.value = data.currentBrightness;
+        document.getElementById('ledBrightnessValue').textContent = Math.round(data.currentBrightness / 255 * 100);
+      }
+      
+      // Update lux waarde indien beschikbaar
+      if (data.light_sensor_enabled && document.getElementById('luxLevel')) {
+        document.getElementById('luxLevel').textContent = data.currentLuxLevel.toFixed(1);
+      }
+    }
     
     // Instellingen ophalen
-    // Update fetchSettings functie om seconden naar minuten om te zetten
     function fetchSettings() {
       fetch('/api/settings')
         .then(response => response.json())
@@ -528,7 +750,6 @@ const char* WEBUI_HTML = R"rawliteral(
         })
         .catch(error => {
           console.error('Fout bij het ophalen van instellingen:', error);
-          // Optioneel: toon een foutmelding aan de gebruiker
         });
     }
     
@@ -548,8 +769,57 @@ const char* WEBUI_HTML = R"rawliteral(
         });
     }
     
+    // LED instellingen ophalen
+    function fetchLEDSettings() {
+      fetch('/api/led/settings')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById('ledAutoMode').value = data.autoMode.toString();
+          document.getElementById('ledStartHour').value = data.startHour;
+          document.getElementById('ledEndHour').value = data.endHour;
+          document.getElementById('ledBrightnessSlider').value = data.brightness;
+          document.getElementById('ledBrightnessValue').textContent = Math.round(data.brightness / 255 * 100);
+          
+          // Lichtsensor instellingen indien beschikbaar
+          const sensorModeElement = document.getElementById('ledSensorMode');
+          if (sensorModeElement) {
+            sensorModeElement.value = data.sensorMode ? 'true' : 'false';
+            
+            if (document.getElementById('ledMinLux')) {
+              setClosestOptionByValue(document.getElementById('ledMinLux'), data.minLux);
+            }
+            
+            if (document.getElementById('ledMaxLux')) {
+              setClosestOptionByValue(document.getElementById('ledMaxLux'), data.maxLux);
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Fout bij het ophalen van LED instellingen:', error);
+        });
+    }
+
+    // Helper functie om de dichtstbijzijnde optie te selecteren
+    function setClosestOptionByValue(selectElement, targetValue) {
+      let closestOption = null;
+      let closestDistance = Infinity;
+      
+      for (let i = 0; i < selectElement.options.length; i++) {
+        const optionValue = parseInt(selectElement.options[i].value);
+        const distance = Math.abs(optionValue - targetValue);
+        
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestOption = i;
+        }
+      }
+      
+      if (closestOption !== null) {
+        selectElement.selectedIndex = closestOption;
+      }
+    }
+
     // Instellingen opslaan
-    // Update saveSettings functie om minuten naar seconden om te rekenen
     function saveSettings() {
       const settings = {
         systeemnaam: document.getElementById('systeemnaam').value,
@@ -564,10 +834,8 @@ const char* WEBUI_HTML = R"rawliteral(
         nacht_aan: Math.round(parseFloat(document.getElementById('nacht_aan').value) * 60),
         nacht_uit: Math.round(parseFloat(document.getElementById('nacht_uit').value) * 60),
         continuModus: document.getElementById('continuModus').value === 'true'
-        
       };
       
-      // Verder dezelfde code voor het versturen van de instellingen
       fetch('/api/settings', {
         method: 'POST',
         headers: {
@@ -575,8 +843,6 @@ const char* WEBUI_HTML = R"rawliteral(
         },
         body: JSON.stringify(settings)
       })
-      // De rest van de functie blijft hetzelfde
-    
       .then(response => {
         if (!response.ok) {
           return response.text().then(text => { throw new Error(text) });
@@ -622,6 +888,53 @@ const char* WEBUI_HTML = R"rawliteral(
       .catch(error => {
         console.error('Fout bij het opslaan van flowsensor instellingen:', error);
         alert('Fout bij het opslaan van flowsensor instellingen: ' + error.message);
+      });
+    }
+    
+    // LED instellingen opslaan
+    function saveLEDSettings() {
+      const settings = {
+        autoMode: document.getElementById('ledAutoMode').value === 'true',
+        startHour: parseInt(document.getElementById('ledStartHour').value),
+        endHour: parseInt(document.getElementById('ledEndHour').value),
+        brightness: parseInt(document.getElementById('ledBrightnessSlider').value)
+      };
+      
+      // Lichtsensor instellingen indien beschikbaar
+      const sensorModeElement = document.getElementById('ledSensorMode');
+      if (sensorModeElement) {
+        settings.sensorMode = sensorModeElement.value === 'true';
+        
+        if (document.getElementById('ledMinLux')) {
+          settings.minLux = parseInt(document.getElementById('ledMinLux').value);
+        }
+        
+        if (document.getElementById('ledMaxLux')) {
+          settings.maxLux = parseInt(document.getElementById('ledMaxLux').value);
+        }
+      }
+      
+      fetch('/api/led/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings)
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.text().then(text => { throw new Error(text) });
+        }
+        return response.json();
+      })
+      .then(data => {
+        alert('LED instellingen opgeslagen!');
+        fetchLEDSettings();
+        fetchStatus();
+      })
+      .catch(error => {
+        console.error('Fout bij het opslaan van LED instellingen:', error);
+        alert('Fout bij het opslaan van LED instellingen: ' + error.message);
       });
     }
     
@@ -700,9 +1013,51 @@ const char* WEBUI_HTML = R"rawliteral(
         console.error('Fout bij het annuleren van override:', error);
       });
     }
+    
+    // LED activeren
+    function activateLED(ledOn) {
+      const brightness = ledOn ? document.getElementById('ledBrightnessSlider').value : 0;
+      
+      fetch('/api/led/override', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          active: true,
+          brightness: parseInt(brightness)
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        fetchStatus(); // Status updaten
+      })
+      .catch(error => {
+        console.error('Fout bij het activeren van LED override:', error);
+      });
+    }
+    
+    // LED override annuleren
+    function cancelLEDOverride() {
+      fetch('/api/led/override', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          active: false
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        fetchStatus(); // Status updaten
+      })
+      .catch(error => {
+        console.error('Fout bij het annuleren van LED override:', error);
+      });
+    }
   </script>
-</body>
-</html>
+
 )rawliteral";
 
 #endif // WEBUI_H

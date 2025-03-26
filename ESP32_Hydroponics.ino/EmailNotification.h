@@ -1,29 +1,32 @@
-//=========================================================================
-// ESP32 Hydroponisch Systeem Controller
-// Email notificatie module - Header
-//=========================================================================
+/*
+ * EmailNotification.h
+ *
+ * Header voor de e-mail notificatie module
+ */
 
 #ifndef EMAIL_NOTIFICATION_H
 #define EMAIL_NOTIFICATION_H
 
 #include "Settings.h"
-#include <Arduino.h>
 
-// E-mail gerelateerde definities
-#define GMAIL_SMTP_SERVER "smtp.gmail.com"
-#define GMAIL_SMTP_PORT 465
-#define EMAIL_SEND_TIMEOUT 20000      // Timeout voor e-mailcommunicatie in ms
-#define MIN_EMAIL_INTERVAL 300000     // Minimale tijd tussen e-mails (5 minuten) om spam te voorkomen
-
-// Functiedeclaraties
-void setupEmailClient();
-bool sendEmailAlert(const char* subject, const char* message);
-void triggerFlowAlert();
-bool sendTestEmail();
-void handleTestEmail();
-
-// Status variabelen
-extern bool emailClientReady;
-extern unsigned long lastEmailSent;
+#if defined(ENABLE_FLOW_SENSOR) && ENABLE_FLOW_SENSOR == true && defined(ENABLE_EMAIL_NOTIFICATION) && ENABLE_EMAIL_NOTIFICATION == true
+  #include <ESP_Mail_Client.h>
+  
+  // Externe variabelen
+  extern bool emailClientReady;
+  extern unsigned long lastEmailSent;
+  extern String lastEmailError;
+  
+  // Functieprototypes
+  void setupEmailNotification();
+  bool sendFlowAlertEmail();
+  bool sendTestEmail();
+  bool sendEmailAlert(const char* subject, const char* message);
+  String getLastEmailError();
+  String getEmailStatusJson();
+  
+  // Hernoem de setupEmailClient functie naar setupEmailNotification voor compatibiliteit
+  #define setupEmailClient setupEmailNotification
+#endif
 
 #endif // EMAIL_NOTIFICATION_H
