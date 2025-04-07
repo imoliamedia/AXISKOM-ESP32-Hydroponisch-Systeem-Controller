@@ -278,7 +278,7 @@ Bijdragen zijn van harte welkom! Als je wilt bijdragen aan dit project:
 
 ## Licentie
 
-Dit project is beschikbaar onder de MIT-licentie. Zie het `LICENSE` bestand voor meer informatie.
+Dit project is gelicenseerd onder de [GPL-3.0 license](LICENSE).
 
 ## Dankwoord
 
