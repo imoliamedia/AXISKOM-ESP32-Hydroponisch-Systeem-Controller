@@ -1,14 +1,28 @@
 /*
+ * ESP32 Hydroponisch Systeem Controller
+ * 
+ * Copyright (C) 2024 AXISKOM
+ * Website: https://axiskom.nl
+ * 
+ * Dit programma is vrije software: je mag het herdistribueren en/of wijzigen
+ * onder de voorwaarden van de GNU General Public License zoals gepubliceerd door
+ * de Free Software Foundation, ofwel versie 3 van de licentie, of
+ * (naar jouw keuze) een latere versie.
+ * 
+ * Deze software is ontwikkeld als onderdeel van het AXISKOM kennisplatform
+ * voor zelfredzaamheid en zelfvoorzienend leven.
+ *
  * SettingsImpl.cpp
  *
  * Implementatie van instellingenfuncties, inclusief laden/opslaan in EEPROM
+ *
  */
 
 #include "Settings.h"
 
 // WiFi instellingen - Wijzig deze naar jouw netwerkinstellingen
-const char* ssid = "JouwWiFiNaam";
-const char* password = "JouwWiFiWachtwoord";
+const char* ssid = "Orange-dd28d";
+const char* password = "4MY348t4";
 
 // Statische IP configuratie
 bool useStaticIP = true;                  // Zet op true voor vast IP, false voor DHCP

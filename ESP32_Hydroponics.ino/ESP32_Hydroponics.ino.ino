@@ -1,12 +1,16 @@
 /*
  * ESP32 Hydroponisch Systeem Controller
  * 
- * Een controller voor hydroponische systemen die pompcycli regelt op basis 
- * van watertemperatuur, met optionele modules voor flowsensing,
- * e-mailnotificaties en LED-verlichting.
+ * Copyright (C) 2024 AXISKOM
+ * Website: https://axiskom.nl
  * 
- * De controller biedt een webinterface voor monitoring en configuratie
- * en ondersteunt zowel interval modus (hydro toren) als continue modus (NFT/DFT).
+ * Dit programma is vrije software: je mag het herdistribueren en/of wijzigen
+ * onder de voorwaarden van de GNU General Public License zoals gepubliceerd door
+ * de Free Software Foundation, ofwel versie 3 van de licentie, of
+ * (naar jouw keuze) een latere versie.
+ * 
+ * Deze software is ontwikkeld als onderdeel van het AXISKOM kennisplatform
+ * voor zelfredzaamheid en zelfvoorzienend leven.
  */
 
 #include "Settings.h"
@@ -26,6 +30,7 @@ void setup() {
   // Start seriële communicatie
   Serial.begin(115200);
   Serial.println("\n\nESP32 Hydroponisch Systeem Controller");
+  Serial.println("© AXISKOM kennisplatform (https://axiskom.nl)");
   Serial.println("Opstarten...");
   
   // Laad instellingen uit EEPROM
@@ -52,10 +57,6 @@ void setup() {
   
   #if defined(ENABLE_FLOW_SENSOR) && ENABLE_FLOW_SENSOR == true && defined(ENABLE_EMAIL_NOTIFICATION) && ENABLE_EMAIL_NOTIFICATION == true
     setupEmailNotification();
-  #endif
-  
-  #ifdef ENABLE_LED_CONTROL
-    setupLEDControl();
   #endif
   
   // Initialiseer webserver
@@ -104,15 +105,6 @@ void loop() {
   
   #if defined(ENABLE_FLOW_SENSOR) && ENABLE_FLOW_SENSOR == true
     checkFlowRate();
-  #endif
-  
-  #ifdef ENABLE_LED_CONTROL
-    // Update LED status elke seconde
-    static unsigned long lastLEDUpdate = 0;
-    if (millis() - lastLEDUpdate > 1000) {
-      updateLEDState();
-      lastLEDUpdate = millis();
-    }
   #endif
 }
 

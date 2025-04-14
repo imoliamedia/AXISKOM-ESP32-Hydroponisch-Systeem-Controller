@@ -1,4 +1,17 @@
 /*
+ * ESP32 Hydroponisch Systeem Controller
+ * 
+ * Copyright (C) 2024 AXISKOM
+ * Website: https://axiskom.nl
+ * 
+ * Dit programma is vrije software: je mag het herdistribueren en/of wijzigen
+ * onder de voorwaarden van de GNU General Public License zoals gepubliceerd door
+ * de Free Software Foundation, ofwel versie 3 van de licentie, of
+ * (naar jouw keuze) een latere versie.
+ * 
+ * Deze software is ontwikkeld als onderdeel van het AXISKOM kennisplatform
+ * voor zelfredzaamheid en zelfvoorzienend leven.
+ *
  * WebServer.cpp
  *
  * Implementatie van de webserver voor de ESP32 Hydroponisch Systeem Controller
@@ -29,13 +42,6 @@ void handleGetConfig();
   #endif
 #endif
 
-#ifdef ENABLE_LED_CONTROL
-  void handleGetLEDStatus();
-  void handleGetLEDSettings();
-  void handlePostLEDSettings();
-  void handlePostLEDOverride();
-#endif
-
 // Hulpfuncties
 String secondsToTimeString(unsigned long seconds);
 String getWiFiSignalStrength();
@@ -63,13 +69,6 @@ void setupWebServer() {
     #if defined(ENABLE_EMAIL_NOTIFICATION) && ENABLE_EMAIL_NOTIFICATION == true
       server.on("/api/testemail", HTTP_POST, handleTestEmail);
     #endif
-  #endif
-  
-  #ifdef ENABLE_LED_CONTROL
-    server.on("/api/led/status", HTTP_GET, handleGetLEDStatus);
-    server.on("/api/led/settings", HTTP_GET, handleGetLEDSettings);
-    server.on("/api/led/settings", HTTP_POST, handlePostLEDSettings);
-    server.on("/api/led/override", HTTP_POST, handlePostLEDOverride);
   #endif
   
   // Start webserver
@@ -105,20 +104,6 @@ void handleGetConfig() {
   #else
     doc["email_notification_enabled"] = false;
   #endif
-  
-  #if defined(ENABLE_LED_CONTROL) && ENABLE_LED_CONTROL == true
-    doc["led_control_enabled"] = true;
-    
-    #if defined(ENABLE_LIGHT_SENSOR) && ENABLE_LIGHT_SENSOR == true
-      doc["light_sensor_enabled"] = true;
-    #else
-      doc["light_sensor_enabled"] = false;
-    #endif
-  #else
-    doc["led_control_enabled"] = false;
-    doc["light_sensor_enabled"] = false;
-  #endif
-  
   String response;
   serializeJson(doc, response);
   server.send(200, "application/json", response);
@@ -326,22 +311,6 @@ String getSystemStatusJson() {
     doc["flow_sensor_enabled"] = false;
   #endif
   
-  // Voeg LED status toe indien ingeschakeld
-  #ifdef ENABLE_LED_CONTROL
-    doc["led_control_enabled"] = true;
-    doc["ledIsOn"] = ledIsOn;
-    doc["ledBrightness"] = currentLEDBrightness;
-    
-    #ifdef ENABLE_LIGHT_SENSOR
-      doc["light_sensor_enabled"] = true;
-      doc["currentLuxLevel"] = currentLuxLevel;
-    #else
-      doc["light_sensor_enabled"] = false;
-    #endif
-  #else
-    doc["led_control_enabled"] = false;
-  #endif
-  
   String response;
   serializeJson(doc, response);
   return response;
@@ -490,154 +459,6 @@ void handleTestEmail() {
   server.send(200, "application/json", response);
 }
 #endif
-#endif
 
-#ifdef ENABLE_LED_CONTROL
-// LED status ophalen
-void handleGetLEDStatus() {
-  DynamicJsonDocument doc(512);
-  
-  doc["ledIsOn"] = ledIsOn;
-  doc["currentBrightness"] = currentLEDBrightness;
-  doc["autoMode"] = settings.ledAutoMode;
-  
-  #ifdef ENABLE_LIGHT_SENSOR
-    doc["sensorMode"] = settings.ledSensorMode;
-    doc["currentLuxLevel"] = currentLuxLevel;
-  #endif
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-}
 
-// LED instellingen ophalen
-void handleGetLEDSettings() {
-  DynamicJsonDocument doc(512);
-  
-  doc["startHour"] = settings.ledStartHour;
-  doc["endHour"] = settings.ledEndHour;
-  doc["brightness"] = settings.ledBrightness;
-  doc["autoMode"] = settings.ledAutoMode;
-  
-  #ifdef ENABLE_LIGHT_SENSOR
-    doc["sensorMode"] = settings.ledSensorMode;
-    doc["minLux"] = settings.ledMinLux;
-    doc["maxLux"] = settings.ledMaxLux;
-    doc["readInterval"] = settings.ledSensorReadInterval;
-  #endif
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-}
-
-// LED instellingen opslaan
-void handlePostLEDSettings() {
-  // Controleer of er JSON data is ontvangen
-  if (!server.hasArg("plain")) {
-    server.send(400, "text/plain", "Geen JSON data ontvangen");
-    return;
-  }
-  
-  String jsonStr = server.arg("plain");
-  DynamicJsonDocument doc(512);
-  
-  // Probeer JSON te parsen
-  DeserializationError error = deserializeJson(doc, jsonStr);
-  if (error) {
-    server.send(400, "text/plain", "Ongeldige JSON data: " + String(error.c_str()));
-    return;
-  }
-  
-  // Update LED instellingen
-  if (doc.containsKey("autoMode")) {
-    settings.ledAutoMode = doc["autoMode"];
-  }
-  
-  if (doc.containsKey("startHour")) {
-    settings.ledStartHour = doc["startHour"];
-  }
-  
-  if (doc.containsKey("endHour")) {
-    settings.ledEndHour = doc["endHour"];
-  }
-  
-  if (doc.containsKey("brightness")) {
-    settings.ledBrightness = doc["brightness"];
-  }
-  
-  // Lichtsensor instellingen indien beschikbaar
-  #ifdef ENABLE_LIGHT_SENSOR
-    if (doc.containsKey("sensorMode")) {
-      settings.ledSensorMode = doc["sensorMode"];
-    }
-    
-    if (doc.containsKey("minLux")) {
-      settings.ledMinLux = doc["minLux"];
-    }
-    
-    if (doc.containsKey("maxLux")) {
-      settings.ledMaxLux = doc["maxLux"];
-    }
-  #endif
-  
-  // Sla instellingen op in EEPROM
-  saveSettings();
-  
-  // Stuur bevestiging
-  DynamicJsonDocument responseDoc(256);
-  responseDoc["status"] = "success";
-  responseDoc["message"] = "LED instellingen opgeslagen";
-  
-  String response;
-  serializeJson(responseDoc, response);
-  server.send(200, "application/json", response);
-}
-
-// LED handmatige bediening
-void handlePostLEDOverride() {
-  // Controleer of er JSON data is ontvangen
-  if (!server.hasArg("plain")) {
-    server.send(400, "text/plain", "Geen JSON data ontvangen");
-    return;
-  }
-  
-  String jsonStr = server.arg("plain");
-  DynamicJsonDocument doc(256);
-  
-  // Probeer JSON te parsen
-  DeserializationError error = deserializeJson(doc, jsonStr);
-  if (error) {
-    server.send(400, "text/plain", "Ongeldige JSON data: " + String(error.c_str()));
-    return;
-  }
-  
-  bool overrideActive = false;
-  int brightness = 0;
-  
-  if (doc.containsKey("active")) {
-    overrideActive = doc["active"];
-  }
-  
-  if (doc.containsKey("brightness")) {
-    brightness = doc["brightness"];
-  }
-  
-  if (overrideActive) {
-    setLEDOverride(true, brightness);
-  } else {
-    cancelLEDOverride();
-  }
-  
-  // Stuur bevestiging
-  DynamicJsonDocument responseDoc(256);
-  responseDoc["status"] = "success";
-  responseDoc["ledIsOn"] = ledIsOn;
-  responseDoc["currentBrightness"] = currentLEDBrightness;
-  
-  String response;
-  serializeJson(responseDoc, response);
-  server.send(200, "application/json", response);
-}
 #endif

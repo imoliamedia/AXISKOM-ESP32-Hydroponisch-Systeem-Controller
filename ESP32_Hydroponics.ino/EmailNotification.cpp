@@ -1,4 +1,17 @@
 /*
+ * ESP32 Hydroponisch Systeem Controller
+ * 
+ * Copyright (C) 2024 AXISKOM
+ * Website: https://axiskom.nl
+ * 
+ * Dit programma is vrije software: je mag het herdistribueren en/of wijzigen
+ * onder de voorwaarden van de GNU General Public License zoals gepubliceerd door
+ * de Free Software Foundation, ofwel versie 3 van de licentie, of
+ * (naar jouw keuze) een latere versie.
+ * 
+ * Deze software is ontwikkeld als onderdeel van het AXISKOM kennisplatform
+ * voor zelfredzaamheid en zelfvoorzienend leven.
+ *
  * EmailNotification.cpp
  *
  * Implementatie van de e-mail notificatie module voor waarschuwingen

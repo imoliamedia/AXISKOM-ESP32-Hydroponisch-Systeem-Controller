@@ -1,4 +1,17 @@
 /*
+ * ESP32 Hydroponisch Systeem Controller
+ * 
+ * Copyright (C) 2024 AXISKOM
+ * Website: https://axiskom.nl
+ * 
+ * Dit programma is vrije software: je mag het herdistribueren en/of wijzigen
+ * onder de voorwaarden van de GNU General Public License zoals gepubliceerd door
+ * de Free Software Foundation, ofwel versie 3 van de licentie, of
+ * (naar jouw keuze) een latere versie.
+ * 
+ * Deze software is ontwikkeld als onderdeel van het AXISKOM kennisplatform
+ * voor zelfredzaamheid en zelfvoorzienend leven.
+ *
  * Settings.h
  * 
  * Header bestand met instellingen, definities en functieprototypes
@@ -21,8 +34,6 @@
 // TRUE = ingeschakeld, FALSE = uitgeschakeld
 #define ENABLE_FLOW_SENSOR false      // Waterstroomsensor
 #define ENABLE_EMAIL_NOTIFICATION false  // E-mail notificaties (alleen relevant als ENABLE_FLOW_SENSOR = true)
-#define ENABLE_LED_CONTROL false     // LED verlichting besturing
-#define ENABLE_LIGHT_SENSOR false   // GY-302 BH1750 lichtsensor (alleen relevant als LED_CONTROL = true)
 
 // Pindefinities
 #define ONE_WIRE_BUS 4    // GPIO4 voor DS18B20 temperatuursensor
@@ -32,18 +43,6 @@
   #define FLOW_SENSOR_PIN 14 // GPIO14 voor YF-S201 flowsensor
   #define FLOW_PULSE_FACTOR 7.5  // Pulsen per liter voor YF-S201
   #define FLOW_CHECK_DELAY 5000  // Wachttijd na pompstart (ms)
-#endif
-
-#ifdef ENABLE_LED_CONTROL
-  #define LED_PWM_PIN 16  // GPIO16 voor LED MOSFET aansturing via PWM
-  #define LED_PWM_FREQ 5000  // PWM frequentie in Hz
-  #define LED_PWM_CHANNEL 0  // PWM kanaal (0-15)
-  #define LED_PWM_RESOLUTION 8 // PWM resolutie (8-bit = 0-255)
-  
-  #ifdef ENABLE_LIGHT_SENSOR
-    #define I2C_SDA 21  // GPIO21 voor I2C SDA
-    #define I2C_SCL 22  // GPIO22 voor I2C SCL
-  #endif
 #endif
 
 // Overige constanten
@@ -89,20 +88,6 @@ struct TempSettings {
     bool emailDebug = false;         // Debug modus voor e-mail
   #endif
   
-  // LED verlichting instellingen
-  #ifdef ENABLE_LED_CONTROL
-    int ledStartHour = 8;  // LED aan om 8:00
-    int ledEndHour = 20;   // LED uit om 20:00
-    int ledBrightness = 255; // Helderheid (0-255)
-    bool ledAutoMode = true; // Automatisch schakelen op basis van tijd
-    
-    #ifdef ENABLE_LIGHT_SENSOR
-      bool ledSensorMode = false;    // Automatisch helderheid op basis van sensor
-      int ledMinLux = 200;           // Minimale lux waarbij LED 100% aan
-      int ledMaxLux = 1000;          // Maximale lux waarbij LED 0% aan
-      int ledSensorReadInterval = 60; // Seconden tussen sensor metingen
-    #endif
-  #endif
 };
 
 // Externe variabelen
@@ -172,25 +157,6 @@ void updateRuntime();
   bool sendFlowAlertEmail();
   bool sendTestEmail();
   String getEmailStatusJson();
-#endif
-
-#ifdef ENABLE_LED_CONTROL
-  // LEDControl.cpp prototypes
-  extern int currentLEDBrightness;
-  extern bool ledIsOn;
-  
-  void setupLEDControl();
-  void updateLEDState();
-  void setLEDBrightness(int brightness);
-  void setLEDOverride(bool active, int brightness);
-  void cancelLEDOverride();
-  String getLEDStatusJson();
-  
-  #ifdef ENABLE_LIGHT_SENSOR
-    extern float currentLuxLevel;
-    
-    void readLightSensor();
-  #endif
 #endif
 
 #endif // SETTINGS_H
