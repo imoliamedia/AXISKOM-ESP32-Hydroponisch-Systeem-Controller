@@ -205,28 +205,33 @@
             });
         });
 
-        // Systemen weergeven
-        function renderSystems() {
-            const grid = document.getElementById('dashboard-grid');
-            grid.innerHTML = '';
+		// Systemen weergeven
+		function renderSystems() {
+			const grid = document.getElementById('dashboard-grid');
+			grid.innerHTML = '';
 
-            systems.forEach((system, index) => {
-                const card = document.createElement('div');
-                card.className = 'system-card';
-                card.innerHTML = `
-                    <div class="system-header">
-                        <h3 class="system-name">${system.name}</h3>
-                        <div class="controls">
-                            <button onclick="editSystem(${index})">Bewerken</button>
-                            <button onclick="deleteSystem(${index})">Verwijderen</button>
-                        </div>
-                    </div>
-                    <iframe src="http://${system.ip}" class="system-iframe" title="${system.name}" id="iframe-${index}"></iframe>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
+			systems.forEach((system, index) => {
+				const card = document.createElement('div');
+				card.className = 'system-card';
+				
+				// Controleer of het IP-adres al met http:// begint
+				const baseUrl = system.ip.startsWith('http://') ? system.ip : `http://${system.ip}`;
+				
+				// Altijd iframe weergave gebruiken ongeacht de systeemnaam
+				card.innerHTML = `
+					<div class="system-header">
+						<h3 class="system-name">${system.name}</h3>
+						<div class="controls">
+							<button onclick="editSystem(${index})">Bewerken</button>
+							<button onclick="deleteSystem(${index})">Verwijderen</button>
+						</div>
+					</div>
+					<iframe src="${baseUrl}" class="system-iframe" title="${system.name}" id="iframe-${index}"></iframe>
+				`;
+				
+				grid.appendChild(card);
+			});
+		}
         // Toon toevoeg/bewerk paneel
         function showAddSystem() {
             document.getElementById('settings-title').textContent = 'Systeem Toevoegen';
