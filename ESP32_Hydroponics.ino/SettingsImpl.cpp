@@ -21,8 +21,8 @@
 #include "Settings.h"
 
 // WiFi instellingen - Wijzig deze naar jouw netwerkinstellingen
-const char* ssid = "Orange-dd28d";
-const char* password = "4MY348t4";
+const char* ssid = "JouwWiFiNaam";
+const char* password = "JouwWiFiWachtwoord";
 
 // Statische IP configuratie
 bool useStaticIP = true;                  // Zet op true voor vast IP, false voor DHCP
