@@ -28,7 +28,6 @@ float totalLiters = 0.0;          // Totaal aantal liters
 bool flowOk = true;               // Flowstatus (OK/probleem)
 unsigned long lastFlowCheck = 0;  // Tijdstip laatste controle
 unsigned long lastPulseTime = 0;  // Tijdstip laatste puls
-float currentPulseFactor = 7.5;   // Dynamische pulsfactor (wordt berekend)
 
 // Interrupt functie voor flowsensor
 void IRAM_ATTR flowPulseCounter() {
@@ -36,39 +35,9 @@ void IRAM_ATTR flowPulseCounter() {
   lastPulseTime = millis();
 }
 
-// Berekent pulsfactor op basis van pompcapaciteit
-float calculatePulseFactor() {
-  // Basis: YF-S201 geeft 7.5 pulsen per liter bij 1500 L/h
-  // Voor andere capaciteiten schalen we deze waarde
-  
-  float basePumpCapacity = 1500.0;  // Basis capaciteit in L/h
-  float baseFactorPerLiter = FLOW_BASE_PULSE_FACTOR;  // 7.5 pulsen per liter
-  
-  // Bereken de verhouding tussen gebruiker pomp en basis pomp
-  float capacityRatio = (float)settings.pumpCapacityLPH / basePumpCapacity;
-  
-  // Schaal de pulsfactor op basis van deze verhouding
-  // Hogere capaciteit = meer pulsen per liter
-  float calculatedFactor = baseFactorPerLiter * capacityRatio;
-  
-  Serial.print("Pomp capaciteit: ");
-  Serial.print(settings.pumpCapacityLPH);
-  Serial.println(" L/h");
-  Serial.print("Berekende pulsfactor: ");
-  Serial.print(calculatedFactor);
-  Serial.println(" pulsen/liter");
-  
-  return calculatedFactor;
-}
-
-// Update de huidige pulsfactor
-void updatePulseFactor() {
-  currentPulseFactor = calculatePulseFactor();
-}
-
 // Initialiseer flowsensor
 void setupFlowSensor() {
-  Serial.print("Flowsensor initialiseren op pin ");
+  Serial.print("Flowsensor YF-S201 initialiseren op pin ");
   Serial.println(FLOW_SENSOR_PIN);
   
   // Configureer pin
@@ -80,11 +49,11 @@ void setupFlowSensor() {
   // Reset variabelen
   flowPulseCount = 0;
   flowRate = 0.0;
+  totalLiters = 0.0;
+  flowOk = true;
   
-  // Bereken de pulsfactor op basis van pompcapaciteit
-  updatePulseFactor();
-  
-  Serial.println("Flowsensor geïnitialiseerd");
+  Serial.println("YF-S201 flowsensor geïnitialiseerd");
+  Serial.println("YF-S201 specificatie: 450 pulsen per liter water");
 }
 
 // Bereken huidige flowsnelheid
@@ -111,15 +80,16 @@ float calculateFlowRate() {
   // Zet om naar seconden
   float elapsedTimeSeconds = elapsedTime / 1000.0;
   
-  // Bereken flowrate (pulsen/seconde / pulsen/liter = liter/seconde)
-  // Vermenigvuldig met 60 voor l/min
+  // YF-S201 specificatie: 450 pulsen per liter
+  // Bereken flowrate: (pulsen / 450) / tijd_in_seconden * 60 = L/min
   float currentFlowRate = 0.0;
   
   if (pulseCount > 0) {
-    currentFlowRate = (pulseCount / currentPulseFactor) / elapsedTimeSeconds * 60.0;
+    float litersThisPeriod = pulseCount / 450.0;  // YF-S201: 450 pulsen per liter
+    currentFlowRate = (litersThisPeriod / elapsedTimeSeconds) * 60.0;  // naar L/min
     
     // Update totaal volume
-    totalLiters += (pulseCount / currentPulseFactor);
+    totalLiters += litersThisPeriod;
   } else {
     currentFlowRate = 0.0;
   }
@@ -153,9 +123,9 @@ void checkFlowRate() {
           Serial.print(" L/min (minimum: ");
           Serial.print(settings.minFlowRate);
           Serial.println(" L/min)");
-          Serial.print("Gebruikte pulsfactor: ");
-          Serial.print(currentPulseFactor);
-          Serial.println(" pulsen/liter");
+          Serial.print("Pomp capaciteit instelling: ");
+          Serial.print(settings.pumpCapacityLPH);
+          Serial.println(" L/h");
           
           flowOk = false;
           
@@ -195,7 +165,8 @@ String getFlowStatusJson() {
   doc["minFlowRate"] = settings.minFlowRate;
   doc["flowAlertEnabled"] = settings.flowAlertEnabled;
   doc["pumpCapacityLPH"] = settings.pumpCapacityLPH;
-  doc["currentPulseFactor"] = currentPulseFactor;
+  doc["sensorType"] = "YF-S201";
+  doc["pulsesPerLiter"] = 450;
   
   #ifdef ENABLE_EMAIL_NOTIFICATION
     doc["emailEnabled"] = true;

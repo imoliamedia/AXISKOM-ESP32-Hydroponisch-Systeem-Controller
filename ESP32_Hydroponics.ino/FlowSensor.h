@@ -17,7 +17,6 @@
  * Header voor de flowsensor module (YF-S201)
  */
 
-
 #ifndef FLOW_SENSOR_H
 #define FLOW_SENSOR_H
 
@@ -29,7 +28,6 @@
   extern float flowRate;
   extern float totalLiters;
   extern bool flowOk;
-  extern float currentPulseFactor;  // Dynamische pulsfactor gebaseerd op pompcapaciteit
   
   // Functieprototypes
   void setupFlowSensor();
@@ -38,8 +36,6 @@
   float calculateFlowRate();
   String getFlowStatusJson();
   void resetFlowCounter();
-  float calculatePulseFactor();     // Berekent pulsfactor op basis van pompcapaciteit
-  void updatePulseFactor();        // Update de huidige pulsfactor
 #endif
 
 #endif // FLOW_SENSOR_H
