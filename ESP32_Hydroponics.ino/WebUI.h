@@ -488,47 +488,47 @@ const char* WEBUI_HTML = R"rawliteral(
 
     // Update flowsensor status
     function updateFlowStatus(data) {
-    // Controleer eerst of flow sensor is ingeschakeld
-    if (!data.flow_sensor_enabled) {
-      console.log('Flow sensor niet ingeschakeld, skip flow status update');
-      return;
-    }
-    
-    console.log('Updating flow status with data:', data);
-    
-    // Update flow rate en totaal volume
-    const flowRateElement = document.getElementById('flowRate');
-    const totalFlowElement = document.getElementById('totalFlow');
-    
-    if (flowRateElement && data.flowRate !== undefined) {
-      flowRateElement.textContent = data.flowRate.toFixed(2);
-    }
-    
-    if (totalFlowElement && data.totalFlowVolume !== undefined) {
-      totalFlowElement.textContent = data.totalFlowVolume.toFixed(1);
-    }
-    
-    // Update flow status indicator
-    const flowStatus = document.getElementById('flowStatus');
-    if (flowStatus) {
-      flowStatus.style.display = 'block';
+      // Controleer eerst of flow sensor is ingeschakeld
+      if (!data.flow_sensor_enabled) {
+        console.log('Flow sensor niet ingeschakeld, skip flow status update');
+        return;
+      }
       
-      // Controleer voor problemen
-      if (data.noFlowDetected === true) {
-        flowStatus.className = 'flow-indicator flow-error';
-        flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming gedetecteerd!';
-      } else if (data.pumpState && data.flowRate <= 0) {
-        flowStatus.className = 'flow-indicator flow-error';
-        flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming!';
-      } else if (data.pumpState && data.flowRate > 0) {
-        flowStatus.className = 'flow-indicator flow-ok';
-        flowStatus.textContent = 'Waterstroming OK';
-      } else if (!data.pumpState) {
-        // Als pomp uit staat, verberg flow status
-        flowStatus.style.display = 'none';
+      console.log('Updating flow status with data:', data);
+      
+      // Update flow rate en totaal volume
+      const flowRateElement = document.getElementById('flowRate');
+      const totalFlowElement = document.getElementById('totalFlow');
+      
+      if (flowRateElement && data.flowRate !== undefined) {
+        flowRateElement.textContent = data.flowRate.toFixed(2);
+      }
+      
+      if (totalFlowElement && data.totalFlowVolume !== undefined) {
+        totalFlowElement.textContent = data.totalFlowVolume.toFixed(1);
+      }
+      
+      // Update flow status indicator
+      const flowStatus = document.getElementById('flowStatus');
+      if (flowStatus) {
+        flowStatus.style.display = 'block';
+        
+        // Controleer voor problemen
+        if (data.noFlowDetected === true) {
+          flowStatus.className = 'flow-indicator flow-error';
+          flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming gedetecteerd!';
+        } else if (data.pumpState && data.flowRate <= 0) {
+          flowStatus.className = 'flow-indicator flow-error';
+          flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming!';
+        } else if (data.pumpState && data.flowRate > 0) {
+          flowStatus.className = 'flow-indicator flow-ok';
+          flowStatus.textContent = 'Waterstroming OK';
+        } else if (!data.pumpState) {
+          // Als pomp uit staat, verberg flow status
+          flowStatus.style.display = 'none';
+        }
       }
     }
-   
       
     // Instellingen ophalen
     function fetchSettings() {
