@@ -375,6 +375,14 @@ const char* WEBUI_HTML = R"rawliteral(
       <div class="settings-label">Minimale flow rate:</div>
       <input type="number" id="minFlowRate" min="0.1" max="30" step="0.1" value="1.0"> L/min
     </div>
+
+    <div class="settings-row">
+      <div class="settings-label">Pomp capaciteit:</div>
+      <input type="number" id="pumpCapacityLPH" min="200" max="3000" step="50" value="1500"> L/h
+    </div>
+    <p style="margin-bottom: 10px; font-size: 12px; color: #666;">
+      Voer de maximale capaciteit van je pomp in (staat meestal op de pomp of verpakking)
+    </p>
     
     <div class="settings-row">
       <div class="settings-label">E-mail waarschuwingen:</div>
@@ -573,6 +581,7 @@ const char* WEBUI_HTML = R"rawliteral(
         .then(data => {
           document.getElementById('minFlowRate').value = data.minFlowRate;
           document.getElementById('flowAlertEnabled').value = data.flowAlertEnabled.toString();
+          document.getElementById('pumpCapacityLPH').value = data.pumpCapacityLPH || 1500;
           document.getElementById('emailUsername').value = data.emailUsername || '';
           document.getElementById('emailPassword').value = data.emailPassword || '';
           document.getElementById('emailRecipient').value = data.emailRecipient || '';
@@ -752,6 +761,7 @@ function fetchStatusWithFlow() {
       const settings = {
         minFlowRate: parseFloat(document.getElementById('minFlowRate').value),
         flowAlertEnabled: document.getElementById('flowAlertEnabled').value === 'true',
+        pumpCapacityLPH: parseInt(document.getElementById('pumpCapacityLPH').value),
         emailUsername: document.getElementById('emailUsername').value,
         emailPassword: document.getElementById('emailPassword').value,
         emailRecipient: document.getElementById('emailRecipient').value

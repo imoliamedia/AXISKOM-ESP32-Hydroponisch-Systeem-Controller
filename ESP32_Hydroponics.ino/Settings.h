@@ -12,6 +12,10 @@
  * Deze software is ontwikkeld als onderdeel van het AXISKOM kennisplatform
  * voor zelfredzaamheid en zelfvoorzienend leven.
  *
+ * WiFiManager.cpp
+ *
+ * Beheer van WiFi verbinding met automatisch herstel en statuscontrole
+ *
  * Settings.h
  * 
  * Header bestand met instellingen, definities en functieprototypes
@@ -32,8 +36,8 @@
 
 // Configuratie voor optionele functionaliteit
 // TRUE = ingeschakeld, FALSE = uitgeschakeld
-#define ENABLE_FLOW_SENSOR false      // Waterstroomsensor
-#define ENABLE_EMAIL_NOTIFICATION false  // E-mail notificaties (alleen relevant als ENABLE_FLOW_SENSOR = true)
+#define ENABLE_FLOW_SENSOR true      // Waterstroomsensor
+#define ENABLE_EMAIL_NOTIFICATION true  // E-mail notificaties (alleen relevant als ENABLE_FLOW_SENSOR = true)
 
 // Pindefinities
 #define ONE_WIRE_BUS 4    // GPIO4 voor DS18B20 temperatuursensor
@@ -41,7 +45,7 @@
 
 #ifdef ENABLE_FLOW_SENSOR
   #define FLOW_SENSOR_PIN 14 // GPIO14 voor YF-S201 flowsensor
-  #define FLOW_PULSE_FACTOR 7.5  // Pulsen per liter voor YF-S201
+  #define FLOW_BASE_PULSE_FACTOR 450.0  // YF-S201 geeft 450 pulsen per liter
   #define FLOW_CHECK_DELAY 5000  // Wachttijd na pompstart (ms)
 #endif
 
@@ -78,6 +82,7 @@ struct TempSettings {
     float minFlowRate = 1.0;         // Minimale stroming in L/min
     bool flowSensorDebug = false;    // Extra debug output
     bool flowAlertEnabled = true;    // Waarschuwingen bij problemen
+    int pumpCapacityLPH = 1500;      // Pomp capaciteit in Liter per Uur (standaard 1500 L/h)
   #endif
   
   // E-mail instellingen
@@ -146,6 +151,7 @@ void updateRuntime();
   void checkFlowRate();
   String getFlowStatusJson();
   void resetFlowCounter();
+  float calculatePulseFactor();    // Nieuwe functie voor dynamische pulsfactor berekening
 #endif
 
 #if defined(ENABLE_FLOW_SENSOR) && defined(ENABLE_EMAIL_NOTIFICATION)

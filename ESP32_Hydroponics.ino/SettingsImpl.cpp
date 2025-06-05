@@ -12,10 +12,13 @@
  * Deze software is ontwikkeld als onderdeel van het AXISKOM kennisplatform
  * voor zelfredzaamheid en zelfvoorzienend leven.
  *
+ * WiFiManager.cpp
+ *
+ * Beheer van WiFi verbinding met automatisch herstel en statuscontrole
+*
  * SettingsImpl.cpp
  *
  * Implementatie van instellingenfuncties, inclusief laden/opslaan in EEPROM
- *
  */
 
 #include "Settings.h"
@@ -25,8 +28,8 @@ const char* ssid = "JouwWiFiNaam";
 const char* password = "JouwWiFiWachtwoord";
 
 // Statische IP configuratie
-bool useStaticIP = true;                  // Zet op true voor vast IP, false voor DHCP
-IPAddress staticIP(192, 168, 0, 31);      // Het gewenste vaste IP-adres
+bool useStaticIP = false;                  // Zet op true voor vast IP, false voor DHCP
+IPAddress staticIP(192, 168, 0, 35);      // Het gewenste vaste IP-adres
 IPAddress gateway(192, 168, 0, 1);         // Je router/gateway IP
 IPAddress subnet(255, 255, 255, 0);        // Subnet mask
 IPAddress dns(192, 168, 0, 1);             // DNS server
@@ -79,6 +82,9 @@ void loadSettings() {
     Serial.print("  Minimale stroming: ");
     Serial.print(settings.minFlowRate);
     Serial.println(" L/min");
+    Serial.print("  Pomp capaciteit: ");
+    Serial.print(settings.pumpCapacityLPH);
+    Serial.println(" L/h");
     Serial.print("  Flow waarschuwingen: ");
     Serial.println(settings.flowAlertEnabled ? "Ingeschakeld" : "Uitgeschakeld");
   #endif
@@ -174,11 +180,15 @@ void updateTemperatureSettings(float lowThreshold, float highThreshold,
 
 #ifdef ENABLE_FLOW_SENSOR
 // Update flowsensor instellingen
-void updateFlowSettings(float minFlow, bool alertEnabled) {
+void updateFlowSettings(float minFlow, bool alertEnabled, int pumpCapacity) {
   settings.minFlowRate = minFlow;
   settings.flowAlertEnabled = alertEnabled;
+  settings.pumpCapacityLPH = pumpCapacity;
   
   Serial.println("Flowsensor instellingen bijgewerkt");
+  Serial.print("  Nieuwe pomp capaciteit: ");
+  Serial.print(pumpCapacity);
+  Serial.println(" L/h");
   
   // Sla op in EEPROM
   saveSettings();

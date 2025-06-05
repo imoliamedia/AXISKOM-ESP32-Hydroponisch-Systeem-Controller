@@ -350,6 +350,7 @@ void handleGetFlowSettings() {
   
   doc["minFlowRate"] = settings.minFlowRate;
   doc["flowAlertEnabled"] = settings.flowAlertEnabled;
+  doc["pumpCapacityLPH"] = settings.pumpCapacityLPH;
   
   #ifdef ENABLE_EMAIL_NOTIFICATION
     doc["emailUsername"] = settings.emailUsername;
@@ -387,6 +388,15 @@ void handlePostFlowSettings() {
   
   if (doc.containsKey("flowAlertEnabled")) {
     settings.flowAlertEnabled = doc["flowAlertEnabled"];
+  }
+
+  // Update pomp capaciteit
+  if (doc.containsKey("pumpCapacityLPH")) {
+    int newCapacity = doc["pumpCapacityLPH"];
+    // Validatie: tussen 200 en 3000 L/h
+    if (newCapacity >= 200 && newCapacity <= 3000) {
+      settings.pumpCapacityLPH = newCapacity;
+    }
   }
   
   #ifdef ENABLE_EMAIL_NOTIFICATION

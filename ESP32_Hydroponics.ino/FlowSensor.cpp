@@ -28,11 +28,42 @@ float totalLiters = 0.0;          // Totaal aantal liters
 bool flowOk = true;               // Flowstatus (OK/probleem)
 unsigned long lastFlowCheck = 0;  // Tijdstip laatste controle
 unsigned long lastPulseTime = 0;  // Tijdstip laatste puls
+float currentPulseFactor = 7.5;   // Dynamische pulsfactor (wordt berekend)
 
 // Interrupt functie voor flowsensor
 void IRAM_ATTR flowPulseCounter() {
   flowPulseCount++;
   lastPulseTime = millis();
+}
+
+// Berekent pulsfactor op basis van pompcapaciteit
+float calculatePulseFactor() {
+  // Basis: YF-S201 geeft 7.5 pulsen per liter bij 1500 L/h
+  // Voor andere capaciteiten schalen we deze waarde
+  
+  float basePumpCapacity = 1500.0;  // Basis capaciteit in L/h
+  float baseFactorPerLiter = FLOW_BASE_PULSE_FACTOR;  // 7.5 pulsen per liter
+  
+  // Bereken de verhouding tussen gebruiker pomp en basis pomp
+  float capacityRatio = (float)settings.pumpCapacityLPH / basePumpCapacity;
+  
+  // Schaal de pulsfactor op basis van deze verhouding
+  // Hogere capaciteit = meer pulsen per liter
+  float calculatedFactor = baseFactorPerLiter * capacityRatio;
+  
+  Serial.print("Pomp capaciteit: ");
+  Serial.print(settings.pumpCapacityLPH);
+  Serial.println(" L/h");
+  Serial.print("Berekende pulsfactor: ");
+  Serial.print(calculatedFactor);
+  Serial.println(" pulsen/liter");
+  
+  return calculatedFactor;
+}
+
+// Update de huidige pulsfactor
+void updatePulseFactor() {
+  currentPulseFactor = calculatePulseFactor();
 }
 
 // Initialiseer flowsensor
@@ -49,6 +80,9 @@ void setupFlowSensor() {
   // Reset variabelen
   flowPulseCount = 0;
   flowRate = 0.0;
+  
+  // Bereken de pulsfactor op basis van pompcapaciteit
+  updatePulseFactor();
   
   Serial.println("Flowsensor geïnitialiseerd");
 }
@@ -82,10 +116,10 @@ float calculateFlowRate() {
   float currentFlowRate = 0.0;
   
   if (pulseCount > 0) {
-    currentFlowRate = (pulseCount / FLOW_PULSE_FACTOR) / elapsedTimeSeconds * 60.0;
+    currentFlowRate = (pulseCount / currentPulseFactor) / elapsedTimeSeconds * 60.0;
     
     // Update totaal volume
-    totalLiters += (pulseCount / FLOW_PULSE_FACTOR);
+    totalLiters += (pulseCount / currentPulseFactor);
   } else {
     currentFlowRate = 0.0;
   }
@@ -111,7 +145,7 @@ void checkFlowRate() {
       unsigned long timeSinceLastPulse = millis() - lastPulseTime;
       
       // Als er geen flow is gedetecteerd en de minimale flowrate niet wordt gehaald
-      if (flowRate < settings.minFlowRate && timeSinceLastPulse > 100000) {
+      if (flowRate < settings.minFlowRate && timeSinceLastPulse > 10000) {
         if (flowOk) {  // Als dit de eerste keer is dat we een probleem detecteren
           Serial.println("WAARSCHUWING: Geen of onvoldoende waterstroming gedetecteerd!");
           Serial.print("Huidige flow: ");
@@ -119,6 +153,9 @@ void checkFlowRate() {
           Serial.print(" L/min (minimum: ");
           Serial.print(settings.minFlowRate);
           Serial.println(" L/min)");
+          Serial.print("Gebruikte pulsfactor: ");
+          Serial.print(currentPulseFactor);
+          Serial.println(" pulsen/liter");
           
           flowOk = false;
           
@@ -157,6 +194,8 @@ String getFlowStatusJson() {
   doc["flowOk"] = flowOk;
   doc["minFlowRate"] = settings.minFlowRate;
   doc["flowAlertEnabled"] = settings.flowAlertEnabled;
+  doc["pumpCapacityLPH"] = settings.pumpCapacityLPH;
+  doc["currentPulseFactor"] = currentPulseFactor;
   
   #ifdef ENABLE_EMAIL_NOTIFICATION
     doc["emailEnabled"] = true;
