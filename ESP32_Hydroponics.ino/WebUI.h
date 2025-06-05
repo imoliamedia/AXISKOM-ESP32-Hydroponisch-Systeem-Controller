@@ -24,7 +24,7 @@ const char* WEBUI_HTML = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-  <title id="pageTitle">Hydroponisch Systeem Controller</title>
+  <title id="pageTitle">Axiskom Hydroponisch Systeem Controller</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
@@ -488,16 +488,33 @@ const char* WEBUI_HTML = R"rawliteral(
 
     // Update flowsensor status
     function updateFlowStatus(data) {
-      if (!data.flow_sensor_enabled) return;
-      
-      document.getElementById('flowRate').textContent = data.flowRate.toFixed(2);
-      document.getElementById('totalFlow').textContent = data.totalFlowVolume.toFixed(1);
-      
-      // Update flow status
-      const flowStatus = document.getElementById('flowStatus');
+    // Controleer eerst of flow sensor is ingeschakeld
+    if (!data.flow_sensor_enabled) {
+      console.log('Flow sensor niet ingeschakeld, skip flow status update');
+      return;
+    }
+    
+    console.log('Updating flow status with data:', data);
+    
+    // Update flow rate en totaal volume
+    const flowRateElement = document.getElementById('flowRate');
+    const totalFlowElement = document.getElementById('totalFlow');
+    
+    if (flowRateElement && data.flowRate !== undefined) {
+      flowRateElement.textContent = data.flowRate.toFixed(2);
+    }
+    
+    if (totalFlowElement && data.totalFlowVolume !== undefined) {
+      totalFlowElement.textContent = data.totalFlowVolume.toFixed(1);
+    }
+    
+    // Update flow status indicator
+    const flowStatus = document.getElementById('flowStatus');
+    if (flowStatus) {
       flowStatus.style.display = 'block';
       
-      if (data.noFlowDetected) {
+      // Controleer voor problemen
+      if (data.noFlowDetected === true) {
         flowStatus.className = 'flow-indicator flow-error';
         flowStatus.textContent = 'WAARSCHUWING: Geen waterstroming gedetecteerd!';
       } else if (data.pumpState && data.flowRate <= 0) {
@@ -507,10 +524,12 @@ const char* WEBUI_HTML = R"rawliteral(
         flowStatus.className = 'flow-indicator flow-ok';
         flowStatus.textContent = 'Waterstroming OK';
       } else if (!data.pumpState) {
+        // Als pomp uit staat, verberg flow status
         flowStatus.style.display = 'none';
       }
     }
-    
+   
+      
     // Instellingen ophalen
     function fetchSettings() {
       fetch('/api/settings')
@@ -562,6 +581,110 @@ const char* WEBUI_HTML = R"rawliteral(
           console.error('Fout bij het ophalen van flowsensor instellingen:', error);
         });
     }
+
+    // Controleer beschikbaarheid van optionele modules
+function checkModulesAvailable() {
+  fetch('/api/config')
+    .then(response => response.json())
+    .then(data => {
+      console.log('Module configuratie ontvangen:', data);
+      
+      // Flow sensor tab en data tonen/verbergen
+      if (data.flow_sensor_enabled) {
+        console.log('Flowsensor is ingeschakeld, toon interface elementen');
+        
+        // Toon flow sensor tab knop
+        const flowTabButton = document.getElementById('flow-tab-button');
+        if (flowTabButton) {
+          flowTabButton.style.display = 'block';
+        }
+        
+        // Toon flow sensor data sectie op hoofdpagina
+        const flowSensorData = document.getElementById('flowSensorData');
+        if (flowSensorData) {
+          flowSensorData.style.display = 'block';
+        }
+        
+        // Laad flow sensor instellingen
+        fetchFlowSettings();
+        
+        // Update status met flow data
+        fetchStatusWithFlow();
+      } else {
+        console.log('Flowsensor is uitgeschakeld, verberg interface elementen');
+        
+        // Verberg flow sensor tab knop
+        const flowTabButton = document.getElementById('flow-tab-button');
+        if (flowTabButton) {
+          flowTabButton.style.display = 'none';
+        }
+        
+        // Verberg flow sensor data sectie
+        const flowSensorData = document.getElementById('flowSensorData');
+        if (flowSensorData) {
+          flowSensorData.style.display = 'none';
+        }
+      }
+      
+      // E-mail functionaliteit (alleen als flow sensor ook is ingeschakeld)
+      if (data.email_notification_enabled) {
+        const sendTestEmailBtn = document.getElementById('sendTestEmailBtn');
+        if (sendTestEmailBtn) {
+          sendTestEmailBtn.style.display = 'inline-block';
+        }
+      } else {
+        const sendTestEmailBtn = document.getElementById('sendTestEmailBtn');
+        if (sendTestEmailBtn) {
+          sendTestEmailBtn.style.display = 'none';
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Fout bij het ophalen van module configuratie:', error);
+    });
+}
+
+// Aangepaste fetchStatus functie die ook flow data update
+function fetchStatusWithFlow() {
+  fetch('/api/status')
+    .then(response => response.json())
+    .then(data => {
+      // Normale status updates
+      document.getElementById('temp').textContent = data.temperature.toFixed(1);
+      document.getElementById('pumpStatus').textContent = `Pomp status: ${data.pumpState ? 'AAN' : 'UIT'}`;
+      document.getElementById('pumpIndicator').className = 
+        data.pumpState ? 'status-indicator on' : 'status-indicator off';
+      
+      // Update tijdsweergave
+      document.getElementById('dateTime').textContent = data.currentDateTime;
+      
+      // Update nachtmodus status
+      isNachtModus = data.isNightMode;
+      document.getElementById('nightMode').style.display = 
+        isNachtModus ? 'block' : 'none';
+
+      // Update modus indicators
+      document.getElementById('continuModusIndicator').style.display = 
+        data.continuModus && !data.overrideActive ? 'block' : 'none';
+      document.getElementById('intervalModusIndicator').style.display = 
+        !data.continuModus && !data.overrideActive ? 'block' : 'none';
+      
+      // Override status bijwerken
+      overrideActive = data.overrideActive;
+      document.getElementById('overrideStatus').style.display = 
+        overrideActive ? 'block' : 'none';
+      document.getElementById('cancelOverrideBtn').style.display = 
+        overrideActive ? 'inline-block' : 'none';
+      
+      // **BELANGRIJK: Update flow sensor data indien beschikbaar**
+      if (data.flow_sensor_enabled) {
+        updateFlowStatus(data);
+      }
+    })
+    .catch(error => {
+      console.error('Fout bij het ophalen van status:', error);
+    });
+}
     
 
     // Helper functie om de dichtstbijzijnde optie te selecteren
